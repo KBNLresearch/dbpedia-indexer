@@ -1,0 +1,11 @@
+<Files record.py>
+    SetHandler wsgi-script
+    Options +ExecCGI
+</Files>
+
+RewriteEngine on
+RewriteBase /dbpedia-index
+RewriteCond %{REQUEST_URI} !^/robots.txt
+RewriteCond %{REQUEST_URI} !^/static
+RewriteCond %{REQUEST_URI} !^(/.*)+record.py
+RewriteRule ^(.*)$ record.py/$1 [PT]
