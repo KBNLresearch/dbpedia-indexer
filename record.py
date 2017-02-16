@@ -78,11 +78,15 @@ def clean(record, uri):
     field = 'http://www.w3.org/2000/01/rdf-schema#label'
     if field in record:
         new_record['label'] = record[field][0]
+    if 'label' in new_record:
+        new_record['label_str'] = new_record['label']
 
     # Name variants
     field = 'http://nl.dbpedia.org/property/naam'
     if field in record:
         new_record['alt_label'] = record[field]
+    if 'alt_label' in new_record:
+        new_record['alt_label_str'] = new_record['alt_label']
 
     return new_record
 
@@ -98,4 +102,5 @@ def index(uri=None):
 
 if __name__ == "__main__":
     result = index('http://nl.dbpedia.org/resource/Alfred_Einstein')
+    print result
 
