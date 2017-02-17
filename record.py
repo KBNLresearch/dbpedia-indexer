@@ -17,16 +17,17 @@ def get_record(uri):
     '''
     Retrieve all (relevant) triples with specified uri as subject.
     '''
-    q = '''
+    payload = {}
+    payload['default-graph-uri'] = 'http://dbpedia.org'
+    payload['format'] = 'json'
+    payload['query'] = '''
     SELECT ?p ?o WHERE {
         <%(uri)s> ?p ?o .
         FILTER (isLiteral(?o) || regex(?o,'www.wiki') ||
             regex(?o,'//nl.') || regex(?o,'//dbp'))
     }
-    '''
-    request_url = VIRTUOSO_URL + q % {"uri":uri}
-    #print(request_url)
-    response = requests.get(request_url)
+    ''' % {"uri":uri}
+    response = requests.get(VIRTUOSO_URL, params=payload)
     record = json.loads(str(response.text))
     return record
 
@@ -102,6 +103,6 @@ def index(uri=None):
     return record
 
 if __name__ == "__main__":
-    result = index('http://nl.dbpedia.org/resource/Alfred_Einstein')
+    result = index('http://nl.dbpedia.org/resource/Julie_&_Ludwig')
     print(result)
 
