@@ -25,6 +25,7 @@ def get_record(uri):
     }
     '''
     request_url = VIRTUOSO_URL + q % {"uri":uri}
+    #print(request_url)
     response = requests.get(request_url)
     record = json.loads(str(response.text))
     return record
@@ -102,5 +103,5 @@ def index(uri=None):
 
 if __name__ == "__main__":
     result = index('http://nl.dbpedia.org/resource/Alfred_Einstein')
-    print result
+    print(result)
 
