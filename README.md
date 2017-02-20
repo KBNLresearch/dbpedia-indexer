@@ -1,3 +1,3 @@
-# dbpedia-index
+# DBpedia index
 
-Collection of Python scripts to build a Solr index out of a subset of Dutch and English DBpedia dumps.
+Collection of Python scripts to build a Solr index from a subset of the Dutch and English DBpedia dumps.
