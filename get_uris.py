@@ -60,9 +60,10 @@ def save_uris(record, lang='nl'):
     '''
     Save uris to plain text file, one uri per line.
     '''
+    print('Saving batch of length: ' + str(len(record.get('results').get('bindings'))))
+
     filename = 'uris_' + lang + '.txt'
     mode = 'ab' if os.path.exists(filename) else 'wb'
-    print('Saving batch of length: ' + str(len(record.get('results').get('bindings'))))
     with open(filename, mode) as fh:
         for triple in record.get('results').get('bindings'):
             fh.write(triple.get('s').get('value').encode('utf-8') + '\n'.encode('utf-8'))
