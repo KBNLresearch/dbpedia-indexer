@@ -21,26 +21,31 @@ def get_uris(lang='nl'):
     if lang == 'nl':
         query = '''
         SELECT DISTINCT ?s WHERE {
-            ?s <http://www.w3.org/2000/01/rdf-schema#comment> ?p .
+            ?s <http://www.w3.org/2000/01/rdf-schema#comment> ?o .
             FILTER(
-                regex(?s, "^http://nl.dbpedia.org/resource/.{2,}", "i") &&
-                !regex(?s, "^http://nl.dbpedia.org/resource/Categorie:", "i") &&
-                !regex(?s, "(doorverwijspagina)", "i")
+                REGEX(?s, "^http://nl.dbpedia.org/resource/.{2,}", "i") &&
+                !REGEX(?s, "(doorverwijspagina)", "i")
             )
         }
         '''
     else:
         query = '''
         SELECT DISTINCT ?s WHERE {
-            ?s <http://www.w3.org/2000/01/rdf-schema#comment> ?p .
+            ?s <http://www.w3.org/2000/01/rdf-schema#comment> ?o .
             FILTER(
-                regex(?s, "http://nl.dbpedia.org/resource/.{2,}", "i") &&
-                !regex(?s, "http://nl.dbpedia.org/resource/Categorie:", "i")
+                REGEX(?s, "http://dbpedia.org/resource/.{2,}", "i") &&
+                !REGEX(?s, "(disambiguation)", "i")
             )
+            MINUS {
+                ?t <http://www.w3.org/2002/07/owl#sameAs> ?s .
+                ?t <http://www.w3.org/2000/01/rdf-schema#comment> ?q .
+                FILTER(
+                    REGEX(?t, "^http://nl.dbpedia.org/resource/.{2,}", "i")
+                )
+            }
         }
         '''
     query = ' '.join(query.split())
-
     count_query = query.replace('DISTINCT ?s', 'count(DISTINCT ?s) as ?count')
 
     payload = {
@@ -70,10 +75,10 @@ def save_uris(record, lang='nl'):
     print('Saving batch of length: ' + str(len(record.get('results').get('bindings'))))
     with open(filename, mode) as fh:
         for triple in record.get('results').get('bindings'):
-            print(triple.get('s').get('value').encode('utf-8'))
+            #print(triple.get('s').get('value').encode('utf-8'))
             fh.write(triple.get('s').get('value').encode('utf-8') + '\n'.encode('utf-8'))
 
 if __name__ == "__main__":
-    #get_uris(nl)
-    get_uris(en)
+    get_uris('nl')
+    get_uris('en')
 
