@@ -5,14 +5,8 @@ import json
 import os
 import requests
 
-from bottle import request
-from bottle import route
-from bottle import default_app
-
 VIRTUOSO_URL = 'http://openvirtuoso.kbresearch.nl/sparql?
 DEFAULT_GRAPH_URI = 'http://nl.dbpedia.org'
-
-application = default_app()
 
 def get_uris(lang='nl'):
     '''
@@ -46,13 +40,9 @@ def get_uris(lang='nl'):
         }
         '''
     query = ' '.join(query.split())
-    count_query = query.replace('DISTINCT ?s', 'count(DISTINCT ?s) as ?count')
 
-    payload = {
-        'default-graph-uri': DEFAULT_GRAPH_URI,
-        'format': 'json',
-        'query': count_query
-    }
+    count_query = query.replace('DISTINCT ?s', 'count(DISTINCT ?s) as ?count')
+    payload = {'default-graph-uri': DEFAULT_GRAPH_URI, 'format': 'json', 'query': count_query}
     response = requests.get(VIRTUOSO_URL, params=payload)
     count = int(response.json().get('results').get('bindings')[0].get('count').get('value'))
     print('Total number of records found: ' + str(count))
