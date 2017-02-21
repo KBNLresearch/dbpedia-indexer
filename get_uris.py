@@ -4,19 +4,19 @@
 import json
 import os
 import requests
-import sys
 
 from bottle import request
 from bottle import route
 from bottle import default_app
 
-VIRTUOSO_URL = "http://openvirtuoso.kbresearch.nl/sparql?"
+VIRTUOSO_URL = 'http://openvirtuoso.kbresearch.nl/sparql?
+DEFAULT_GRAPH_URI = 'http://nl.dbpedia.org'
 
 application = default_app()
 
 def get_uris(lang='nl'):
     '''
-    Retrieve all resource uris for specified language.
+    Retrieve all relevant resource uris for specified language.
     '''
     if lang == 'nl':
         query = '''
@@ -49,7 +49,7 @@ def get_uris(lang='nl'):
     count_query = query.replace('DISTINCT ?s', 'count(DISTINCT ?s) as ?count')
 
     payload = {
-        'default-graph-uri': 'http://nl.dbpedia.org',
+        'default-graph-uri': DEFAULT_GRAPH_URI,
         'format': 'json',
         'query': count_query
     }
@@ -68,14 +68,13 @@ def get_uris(lang='nl'):
 
 def save_uris(record, lang='nl'):
     '''
-    Save URIs to plain text file, one URI per line.
+    Save uris to plain text file, one uri per line.
     '''
     filename = 'uris_' + lang + '.txt'
     mode = 'ab' if os.path.exists(filename) else 'wb'
     print('Saving batch of length: ' + str(len(record.get('results').get('bindings'))))
     with open(filename, mode) as fh:
         for triple in record.get('results').get('bindings'):
-            #print(triple.get('s').get('value').encode('utf-8'))
             fh.write(triple.get('s').get('value').encode('utf-8') + '\n'.encode('utf-8'))
 
 if __name__ == "__main__":
