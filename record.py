@@ -16,6 +16,7 @@ FORMAT = 'json'
 
 PROP_ABSTRACT = 'http://www.w3.org/2000/01/rdf-schema#comment'
 PROP_BIRTH_DATE = 'http://dbpedia.org/ontology/birthDate'
+PROP_BIRTH_NAME = 'http://dbpedia.org/ontology/birthName'
 PROP_BIRTH_PLACE = 'http://dbpedia.org/ontology/birthPlace'
 PROP_DEATH_DATE = 'http://dbpedia.org/ontology/deathDate'
 PROP_DEATH_PLACE = 'http://dbpedia.org/ontology/deathPlace'
@@ -26,27 +27,6 @@ PROP_REDIRECT = 'http://dbpedia.org/ontology/wikiPageRedirects'
 PROP_SAME_AS = 'http://www.w3.org/2002/07/owl#sameAs'
 PROP_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'
 
-def normalize(s):
-    '''
-    Normalize string by removing punctuation and capitalization.
-    '''
-    chars = ['.', ',', ':', '?', '!', ';', '-', '\u2013', '"', "'"]
-    for c in chars:
-        s = s.replace(c, ' ')
-    s = ' '.join(s.split())
-    s = s.lower()
-    return s
-
-def uri_to_string(uri):
-    '''
-    Transform a dbpedia resource uri into a string.
-    '''
-    s = uri.split('/resource/')[-1]
-    s = s.replace('_', ' ')
-    if ' (' in s and ')' in s:
-        s = s.split(' (')[0]
-    s = ' '.join(s.split())
-    return s
 
 def get_prop(uri, prop, subject=True):
     '''
@@ -120,26 +100,45 @@ def merge(records):
                 new_record[key] = value
     return new_record
 
+def normalize(s):
+    '''
+    Normalize string by removing punctuation and capitalization.
+    '''
+    chars = ['.', ',', ':', '?', '!', ';', '-', '\u2013', '"', "'"]
+    for c in chars:
+        s = s.replace(c, ' ')
+    s = ' '.join(s.split())
+    s = s.lower()
+    return s
+
+def uri_to_string(uri):
+    '''
+    Transform a dbpedia resource uri into a string.
+    '''
+    s = uri.split('/resource/')[-1]
+    s = s.replace('_', ' ')
+    if ' (' in s and ')' in s:
+        s = s.split(' (')[0]
+    s = ' '.join(s.split())
+    return s
+
 def clean(record, uri):
     '''
     Extract and clean up the data that is to be indexed.
     '''
     new_record = {}
 
-    # Identifier
     new_record['id'] = uri
-
-    # Language
+    new_record['label'] = record[PROP_LABEL][0]
+    new_record['abstract'] = record[PROP_ABSTRACT][0]
     new_record['lang'] = 'nl' if uri.startswith('http://nl.') else 'en'
+    new_record['inlinks'] = max(record['inlinks'])
 
     # Ambiguity flag
     if ' (' in uri and ')' in uri:
         new_record['ambig'] = 1
     else:
         new_record['ambig'] = 0
-
-    # Label
-    new_record['label'] = record[PROP_LABEL][0]
 
     # Normalized pref label
     pref_label = normalize(new_record['label'])
@@ -152,6 +151,8 @@ def clean(record, uri):
     cand = record[PROP_LABEL][1:]
     if PROP_NAME in record:
         cand += record[PROP_NAME]
+    if PROP_BIRTH_NAME in record:
+        cand += record[PROP_BIRTH_NAME]
     if PROP_REDIRECT in record:
         cand += [uri_to_string(u) for u in record[PROP_REDIRECT]]
 
@@ -161,14 +162,12 @@ def clean(record, uri):
             if l_norm not in alt_label:
                 alt_label.append(l_norm)
 
+    for l in alt_label:
+        if len(set(l.split()) & set(pref_label.split())) == len(l.split()):
+            alt_label.remove(l)
+
     new_record['alt_label'] = alt_label
     new_record['alt_label_str'] = alt_label
-
-    # Abstract
-    new_record['abstract'] = record[PROP_ABSTRACT][0]
-
-    # Inlinks
-    new_record['inlinks'] = max(record['inlinks'])
 
     # Type
     if PROP_TYPE in record:
@@ -177,7 +176,7 @@ def clean(record, uri):
         new_record['schema_type'] = list(set([t.split('/')[-1] for t in
             record[PROP_TYPE] if t.startswith('http://schema.org/')]))
 
-    # Categories
+    # Keywords
     # E.g. http://nl.dbpedia.org/resource/Categorie:Amerikaans_hoogleraar
     if PROP_LINK in record:
         keywords = []
