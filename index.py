@@ -4,21 +4,42 @@
 import json
 import record
 import requests
+import time
+
+URIS_NL = 'uris_nl.txt'
+URIS_EN = 'uris_en.txt'
+LOG = 'log.txt'
 
 SOLR_URL = 'http://sara-backup:8082/solr/dbpedia/update/json/docs'
 
 headers = {'Content-Type': 'application/json'}
 
-with open('uris_nl.txt', 'rb') as fh:
-    for line in fh:
-        try:
-            rec = record.index(line[:-1].decode('utf-8'))
-            payload = json.dumps(rec, ensure_ascii=False).encode('utf-8')
-            print(payload)
-            r = requests.post(SOLR_URL, data=payload, headers=headers)
-            print(r.text)
-        except:
-            with open('uris_nl_skipped.txt', 'ab') as fh:
-                fh.write(line)
-            continue
+def skip(uri):
+    mode = 'ab' if os.path.exists(LOG) else 'wb'
+    with open(LOG, mode) as fh:
+        fh.write(uri)
 
+for f in [URIS_EN, URIS_EN]:
+    with open(f, 'rb') as fh:
+        for uri in fh:
+            retries = 0
+            payload = None
+            while not payload and retries < 5:
+                try:
+                    r = record.index(uri[:-1].decode('utf-8'))
+                    payload = json.dumps(r, ensure_ascii=False)
+                    print(payload)
+                except:
+                    retries += 1
+                    time.sleep(1)
+                    continue
+            if not payload:
+                skip(uri)
+                continue
+            '''
+            try:
+                response = requests.post(SOLR_URL, data=payload, headers=headers)
+                print(response.text)
+            except:
+                skip(uri)
+            '''
