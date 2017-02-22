@@ -208,15 +208,15 @@ def clean(record, uri):
     if PROP_BIRTH_PLACE in record:
         places = []
         for p in record[PROP_BIRTH_PLACE]:
-            if p.startswith('http://nl.dbpedia.org/resource/'):
-                places.append(normalize(uri_to_string(p)))
+            #if p.startswith('http://nl.dbpedia.org/resource/'):
+            places.append(normalize(uri_to_string(p)))
         new_record['birth_place'] = list(set(places))
 
     if PROP_DEATH_PLACE in record:
         places = []
         for p in record[PROP_DEATH_PLACE]:
-            if p.startswith('http://nl.dbpedia.org/resource/'):
-                places.append(normalize(uri_to_string(p)))
+            #if p.startswith('http://nl.dbpedia.org/resource/'):
+            places.append(normalize(uri_to_string(p)))
         new_record['death_place'] = list(set(places))
 
     return new_record
@@ -252,6 +252,6 @@ def index(uri=None):
     return record
 
 if __name__ == "__main__":
-    result = index('http://nl.dbpedia.org/resource/John_Lennon')
+    result = index('http://nl.dbpedia.org/resource/Albert_Einstein')
     pprint.pprint(result)
 
