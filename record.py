@@ -12,10 +12,68 @@ from bottle import default_app
 
 VIRTUOSO_URL = 'http://openvirtuoso.kbresearch.nl/sparql?'
 DEFAULT_GRAPH_URI = 'http://nl.dbpedia.org'
+FORMAT = 'json'
 
-SAME_AS_PROP = 'http://www.w3.org/2002/07/owl#sameAs'
+PROP_ABSTRACT = 'http://www.w3.org/2000/01/rdf-schema#comment'
+PROP_LABEL = 'http://www.w3.org/2000/01/rdf-schema#label'
+PROP_LINK = 'http://dbpedia.org/ontology/wikiPageWikiLink'
+PROP_NAME = 'http://xmlns.com/foaf/0.1/name'
+PROP_REDIRECT = 'http://dbpedia.org/ontology/wikiPageRedirects'
+PROP_SAME_AS = 'http://www.w3.org/2002/07/owl#sameAs'
+PROP_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'
 
-application = default_app()
+def normalize(s):
+    '''
+    Normalize string by removing punctuation and capitalization.
+    '''
+    chars = ['.', ',', ':', '?', '!', ';', '-', '\u2013', '"', "'"]
+    for c in chars:
+        s = s.replace(c, ' ')
+    s = ' '.join(s.split())
+    s = s.lower()
+    return s
+
+def tokenize(s):
+    '''
+    Tokenize string.
+    '''
+    s = re.split('\W+', s, flags=re.UNICODE)
+    return [t for t in s if t]
+
+def uri_to_string(uri):
+    '''
+    Transform a dbpedia resource uri into a string.
+    '''
+    s = uri.split('/resource/')[-1]
+    s = s.replace('_', ' ')
+    if ' (' in s and ')' in s:
+        s = s.split(' (')[0]
+    s = ' '.join(s.split())
+    return s
+
+def get_prop(uri, prop, subject=True):
+    '''
+    Retrieve all property values with specified uri as either subject or object.
+    '''
+    subj = '<' + uri + '>' if subject else '?x'
+    obj = '?x' if subject else '<' + uri + '>'
+    query = '''
+    SELECT ?x WHERE {
+        %(subj)s <%(prop)s> %(obj)s .
+    }
+    ''' % {'subj': subj, 'prop': prop, 'obj': obj}
+    query = ' '.join(query.split())
+
+    payload = {'default-graph-uri': DEFAULT_GRAPH_URI, 'format': FORMAT,
+            'query': query}
+    response = requests.get(VIRTUOSO_URL, params=payload)
+    response = response.json()
+
+    values = []
+    for triple in response.get('results').get('bindings'):
+        values.append(triple.get('x').get('value'))
+
+    return values
 
 def get_record(uri):
     '''
@@ -24,30 +82,33 @@ def get_record(uri):
     query = '''
     SELECT ?p ?o WHERE {
         <%(uri)s> ?p ?o .
-        FILTER (isLiteral(?o) || regex(?o,'www.wiki') ||
-            regex(?o,'//nl.') || regex(?o,'//dbp'))
     }
-    ''' % {"uri": uri}
+    ''' % {'uri': uri}
+    query = ' '.join(query.split())
 
-    payload = {'default-graph-uri': DEFAULT_GRAPH_URI, 'format': 'json',
+    payload = {'default-graph-uri': DEFAULT_GRAPH_URI, 'format': FORMAT,
             'query': query}
 
     response = requests.get(VIRTUOSO_URL, params=payload)
-    return response.json()
+    response = response.json()
 
-def transform(record):
-    '''
-    Format Virtuoso JSON response for further processing.
-    '''
-    new_record = {}
-    for triple in record.get('results').get('bindings'):
+    record = {}
+    for triple in response.get('results').get('bindings'):
         key = triple.get('p').get('value')
         value = triple.get('o').get('value')
-        if key in new_record:
-            new_record[key].append(value)
+        if key in record:
+            record[key].append(value)
         else:
-            new_record[key] = [value]
-    return new_record
+            record[key] = [value]
+
+    redirects = get_prop(uri, PROP_REDIRECT, False)
+    if redirects:
+        record[PROP_REDIRECT] = redirects
+
+    inlinks = len(get_prop(uri, PROP_LINK, False))
+    record['inlinks'] = [inlinks]
+
+    return record
 
 def merge(records):
     '''
@@ -81,18 +142,42 @@ def clean(record, uri):
         new_record['ambig'] = 0
 
     # Label
-    field = 'http://www.w3.org/2000/01/rdf-schema#label'
-    if field in record:
-        new_record['label'] = record[field][0]
-    if 'label' in new_record:
-        new_record['label_str'] = new_record['label']
+    new_record['label'] = record[PROP_LABEL][0]
 
-    # Name variants
-    field = 'http://nl.dbpedia.org/property/naam'
-    if field in record:
-        new_record['alt_label'] = record[field]
-    if 'alt_label' in new_record:
-        new_record['alt_label_str'] = new_record['alt_label']
+    # Normalized pref label
+    pref_label = normalize(new_record['label'])
+    new_record['pref_label'] = pref_label
+    new_record['pref_label_str'] = pref_label
+
+    # Normalized alt labels
+    alt_label = []
+
+    cand = record[PROP_LABEL][1:]
+    if PROP_NAME in record:
+        cand += record[PROP_NAME]
+    if PROP_REDIRECT in record:
+        cand += [uri_to_string(u) for u in record[PROP_REDIRECT]]
+
+    for l in cand:
+        l_norm = normalize(l)
+        if l_norm != pref_label:
+            if l_norm not in alt_label:
+                alt_label.append(l_norm)
+
+    new_record['alt_label'] = alt_label
+    new_record['alt_label_str'] = alt_label
+
+    # Abstract
+    new_record['abstract'] = record[PROP_ABSTRACT][0]
+
+    # Inlinks
+    new_record['inlinks'] = max(record['inlinks'])
+
+    # Type
+    new_record['dbo_type'] = list(set([t.split('/')[-1] for t in record[PROP_TYPE]
+            if t.startswith('http://dbpedia.org/ontology/')]))
+    new_record['schema_type'] = list(set([t.split('/')[-1] for t in record[PROP_TYPE]
+            if t.startswith('http://schema.org/')]))
 
     return new_record
 
@@ -107,17 +192,15 @@ def index(uri=None):
     # Get original record
     records = []
     record = get_record(uri)
-    record = transform(record)
     records.append(record)
 
     # Check for English record if original was Dutch
     if uri.startswith('http://nl.dbpedia.org/resource/'):
-        same_as_uris = [u for u in record.get(SAME_AS_PROP) if
+        same_as_uris = [u for u in record.get(PROP_SAME_AS) if
                 u.startswith('http://dbpedia.org/resource/')]
         if same_as_uris:
             for same_as_uri in same_as_uris:
-                same_as_record = transform(get_record(same_as_uri))
-                records.append(same_as_record)
+                records.append(get_record(same_as_uri))
 
     # Merge records into one
     record = merge(records)
@@ -129,6 +212,6 @@ def index(uri=None):
     return record
 
 if __name__ == "__main__":
-    result = index('http://nl.dbpedia.org/resource/Julie_&_Ludwig')
+    result = index('http://nl.dbpedia.org/resource/Albert_Einstein')
     pprint.pprint(result)
 
