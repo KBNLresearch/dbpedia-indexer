@@ -10,6 +10,8 @@ from bottle import request
 from bottle import route
 from bottle import default_app
 
+from unidecode import unidecode
+
 VIRTUOSO_URL = 'http://openvirtuoso.kbresearch.nl/sparql?'
 DEFAULT_GRAPH_URI = 'http://nl.dbpedia.org'
 FORMAT = 'json'
@@ -109,8 +111,9 @@ def normalize(s):
     chars = ['.', ',', ':', '?', '!', ';', '-', '\u2013', '"', "'"]
     for c in chars:
         s = s.replace(c, ' ')
-    s = ' '.join(s.split())
     s = s.lower()
+    s = unidecode(s)
+    s = ' '.join(s.split())
     return s
 
 def uri_to_string(uri):
@@ -168,7 +171,7 @@ def clean(record, uri):
             if l_norm not in alt_label:
                 alt_label.append(l_norm)
 
-    for l in alt_label:
+    for l in alt_label[:]:
         if len(set(l.split()) & set(pref_label.split())) == len(l.split()):
             alt_label.remove(l)
 
@@ -206,24 +209,20 @@ def clean(record, uri):
 
     # Birth and death place
     if PROP_BIRTH_PLACE in record:
-        places_nl = []
-        places_en = []
-        for p in record[PROP_BIRTH_PLACE]:
-            if p.startswith('http://nl.dbpedia.org/resource/'):
-                places_nl.append(normalize(uri_to_string(p)))
-            else:
-                places_en.append(normalize(uri_to_string(p)))
-        new_record['birth_place'] = list(set(places_nl)) if places_nl else list(set(places_en))
+        places = [normalize(uri_to_string(p)) for p in record[PROP_BIRTH_PLACE]
+            if p.startswith('http://nl.dbpedia.org/resource/')]
+        if not places:
+            places = [normalize(uri_to_string(p)) for p in record[PROP_BIRTH_PLACE]
+                if p.startswith('http://dbpedia.org/resource/')]
+        new_record['birth_place'] = list(set(places))
 
     if PROP_DEATH_PLACE in record:
-        places_nl = []
-        places_en = []
-        for p in record[PROP_DEATH_PLACE]:
-            if p.startswith('http://nl.dbpedia.org/resource/'):
-                places_nl.append(normalize(uri_to_string(p)))
-            else:
-                places_en.append(normalize(uri_to_string(p)))
-        new_record['death_place'] = list(set(places_nl)) if places_nl else list(set(places_en))
+        places = [normalize(uri_to_string(p)) for p in record[PROP_DEATH_PLACE]
+            if p.startswith('http://nl.dbpedia.org/resource/')]
+        if not places:
+            places = [normalize(uri_to_string(p)) for p in record[PROP_DEATH_PLACE]
+                if p.startswith('http://dbpedia.org/resource/')]
+        new_record['death_place'] = list(set(places))
 
     return new_record
 
@@ -260,6 +259,6 @@ def index(uri=None):
     return record
 
 if __name__ == "__main__":
-    result = index('http://nl.dbpedia.org/resource/J._Slauerhoff')
+    result = index('http://nl.dbpedia.org/resource/Édith_Piaf')
     pprint.pprint(result)
 
