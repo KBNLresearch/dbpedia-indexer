@@ -246,6 +246,6 @@ def index(uri=None):
     return record
 
 if __name__ == "__main__":
-    result = index('http://nl.dbpedia.org/resource/Ronald_Reagan')
+    result = index('http://nl.dbpedia.org/resource/John_Lennon')
     pprint.pprint(result)
 
