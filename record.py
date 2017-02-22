@@ -17,6 +17,7 @@ DEFAULT_GRAPH_URI = 'http://nl.dbpedia.org'
 FORMAT = 'json'
 
 PROP_ABSTRACT = 'http://www.w3.org/2000/01/rdf-schema#comment'
+PROP_ALIAS = 'http://dbpedia.org/ontology/alias'
 PROP_BIRTH_DATE = 'http://dbpedia.org/ontology/birthDate'
 PROP_BIRTH_NAME = 'http://dbpedia.org/ontology/birthName'
 PROP_BIRTH_PLACE = 'http://dbpedia.org/ontology/birthPlace'
@@ -27,6 +28,7 @@ PROP_LABEL = 'http://www.w3.org/2000/01/rdf-schema#label'
 PROP_LINK = 'http://dbpedia.org/ontology/wikiPageWikiLink'
 PROP_LONG_NAME = 'http://dbpedia.org/ontology/longName'
 PROP_NAME = 'http://xmlns.com/foaf/0.1/name'
+PROP_NICK_NAME = 'http://xmlns.com/foaf/0.1/nick'
 PROP_REDIRECT = 'http://dbpedia.org/ontology/wikiPageRedirects'
 PROP_SAME_AS = 'http://www.w3.org/2002/07/owl#sameAs'
 PROP_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'
@@ -108,11 +110,11 @@ def normalize(s):
     '''
     Normalize string by removing punctuation and capitalization.
     '''
-    chars = ['.', ',', ':', '?', '!', ';', '-', '\u2013', '"', "'"]
+    chars = ['.', ',', ':', '?', '!', ';', '-', '\u2013']
     for c in chars:
         s = s.replace(c, ' ')
-    s = s.lower()
     s = unidecode(s)
+    s = s.lower()
     s = ' '.join(s.split())
     return s
 
@@ -154,14 +156,11 @@ def clean(record, uri):
     alt_label = []
 
     cand = record[PROP_LABEL][1:]
-    if PROP_NAME in record:
-        cand += record[PROP_NAME]
-    if PROP_BIRTH_NAME in record:
-        cand += record[PROP_BIRTH_NAME]
-    if PROP_GIVEN_NAME in record:
-        cand += record[PROP_GIVEN_NAME]
-    if PROP_LONG_NAME in record:
-        cand += record[PROP_LONG_NAME]
+    props = [PROP_NAME, PROP_NICK_NAME, PROP_BIRTH_NAME, PROP_GIVEN_NAME,
+        PROP_LONG_NAME, PROP_ALIAS]
+    for p in props:
+        if p in record:
+            cand += record[p]
     if PROP_REDIRECT in record:
         cand += [uri_to_string(u) for u in record[PROP_REDIRECT]]
 
@@ -259,6 +258,6 @@ def index(uri=None):
     return record
 
 if __name__ == "__main__":
-    result = index('http://nl.dbpedia.org/resource/Édith_Piaf')
+    result = index('http://nl.dbpedia.org/resource/Rode_Kruis')
     pprint.pprint(result)
 
