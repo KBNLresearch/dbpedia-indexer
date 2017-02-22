@@ -20,8 +20,10 @@ PROP_BIRTH_NAME = 'http://dbpedia.org/ontology/birthName'
 PROP_BIRTH_PLACE = 'http://dbpedia.org/ontology/birthPlace'
 PROP_DEATH_DATE = 'http://dbpedia.org/ontology/deathDate'
 PROP_DEATH_PLACE = 'http://dbpedia.org/ontology/deathPlace'
+PROP_GIVEN_NAME = 'http://xmlns.com/foaf/0.1/givenName'
 PROP_LABEL = 'http://www.w3.org/2000/01/rdf-schema#label'
 PROP_LINK = 'http://dbpedia.org/ontology/wikiPageWikiLink'
+PROP_LONG_NAME = 'http://dbpedia.org/ontology/longName'
 PROP_NAME = 'http://xmlns.com/foaf/0.1/name'
 PROP_REDIRECT = 'http://dbpedia.org/ontology/wikiPageRedirects'
 PROP_SAME_AS = 'http://www.w3.org/2002/07/owl#sameAs'
@@ -153,6 +155,10 @@ def clean(record, uri):
         cand += record[PROP_NAME]
     if PROP_BIRTH_NAME in record:
         cand += record[PROP_BIRTH_NAME]
+    if PROP_GIVEN_NAME in record:
+        cand += record[PROP_GIVEN_NAME]
+    if PROP_LONG_NAME in record:
+        cand += record[PROP_LONG_NAME]
     if PROP_REDIRECT in record:
         cand += [uri_to_string(u) for u in record[PROP_REDIRECT]]
 
