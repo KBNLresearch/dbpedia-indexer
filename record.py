@@ -4,7 +4,6 @@
 import json
 import pprint
 import requests
-import sys
 
 from bottle import request
 from bottle import route
@@ -177,7 +176,7 @@ def clean(record, uri):
     new_record['alt_label'] = alt_label
     new_record['alt_label_str'] = alt_label
 
-    # Type
+    # Types
     if PROP_TYPE in record:
         new_record['dbo_type'] = list(set([t.split('/')[-1] for t in
             record[PROP_TYPE] if t.startswith('http://dbpedia.org/ontology/')]))
@@ -250,11 +249,7 @@ def index(uri=None):
 
     # Merge records into one
     record = merge(records)
-    pprint.pprint(record)
-    #sys.exit()
     record = clean(record, uri)
-    #pprint.pprint(record)
-
     return record
 
 if __name__ == "__main__":
