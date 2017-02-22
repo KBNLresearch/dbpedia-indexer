@@ -206,18 +206,24 @@ def clean(record, uri):
 
     # Birth and death place
     if PROP_BIRTH_PLACE in record:
-        places = []
+        places_nl = []
+        places_en = []
         for p in record[PROP_BIRTH_PLACE]:
-            #if p.startswith('http://nl.dbpedia.org/resource/'):
-            places.append(normalize(uri_to_string(p)))
-        new_record['birth_place'] = list(set(places))
+            if p.startswith('http://nl.dbpedia.org/resource/'):
+                places_nl.append(normalize(uri_to_string(p)))
+            else:
+                places_en.append(normalize(uri_to_string(p)))
+        new_record['birth_place'] = list(set(places_nl)) if places_nl else list(set(places_en))
 
     if PROP_DEATH_PLACE in record:
-        places = []
+        places_nl = []
+        places_en = []
         for p in record[PROP_DEATH_PLACE]:
-            #if p.startswith('http://nl.dbpedia.org/resource/'):
-            places.append(normalize(uri_to_string(p)))
-        new_record['death_place'] = list(set(places))
+            if p.startswith('http://nl.dbpedia.org/resource/'):
+                places_nl.append(normalize(uri_to_string(p)))
+            else:
+                places_en.append(normalize(uri_to_string(p)))
+        new_record['death_place'] = list(set(places_nl)) if places_nl else list(set(places_en))
 
     return new_record
 
@@ -236,8 +242,10 @@ def index(uri=None):
 
     # Check for English record if original was Dutch
     if uri.startswith('http://nl.dbpedia.org/resource/'):
-        same_as_uris = [u for u in record.get(PROP_SAME_AS) if
-                u.startswith('http://dbpedia.org/resource/')]
+        same_as_uris = []
+        if PROP_SAME_AS in record:
+            same_as_uris = [u for u in record.get(PROP_SAME_AS) if
+                    u.startswith('http://dbpedia.org/resource/')]
         if same_as_uris:
             for same_as_uri in same_as_uris:
                 records.append(get_record(same_as_uri))
@@ -252,6 +260,6 @@ def index(uri=None):
     return record
 
 if __name__ == "__main__":
-    result = index('http://nl.dbpedia.org/resource/Albert_Einstein')
+    result = index('http://nl.dbpedia.org/resource/J._Slauerhoff')
     pprint.pprint(result)
 
