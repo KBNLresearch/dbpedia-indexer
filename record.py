@@ -16,14 +16,15 @@ FORMAT = 'json'
 
 PROP_ABSTRACT = 'http://www.w3.org/2000/01/rdf-schema#comment'
 PROP_BIRTH_DATE = 'http://dbpedia.org/ontology/birthDate'
+PROP_BIRTH_PLACE = 'http://dbpedia.org/ontology/birthPlace'
 PROP_DEATH_DATE = 'http://dbpedia.org/ontology/deathDate'
+PROP_DEATH_PLACE = 'http://dbpedia.org/ontology/deathPlace'
 PROP_LABEL = 'http://www.w3.org/2000/01/rdf-schema#label'
 PROP_LINK = 'http://dbpedia.org/ontology/wikiPageWikiLink'
 PROP_NAME = 'http://xmlns.com/foaf/0.1/name'
 PROP_REDIRECT = 'http://dbpedia.org/ontology/wikiPageRedirects'
 PROP_SAME_AS = 'http://www.w3.org/2002/07/owl#sameAs'
 PROP_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'
-
 
 def normalize(s):
     '''
@@ -35,13 +36,6 @@ def normalize(s):
     s = ' '.join(s.split())
     s = s.lower()
     return s
-
-def tokenize(s):
-    '''
-    Tokenize string.
-    '''
-    s = re.split('\W+', s, flags=re.UNICODE)
-    return [t for t in s if t]
 
 def uri_to_string(uri):
     '''
@@ -205,6 +199,21 @@ def clean(record, uri):
         new_record['death_year'] = max([int(y.split('-')[0]) for y in
             record[PROP_DEATH_DATE]])
 
+    # Birth and death place
+    if PROP_BIRTH_PLACE in record:
+        places = []
+        for p in record[PROP_BIRTH_PLACE]:
+            if p.startswith('http://nl.dbpedia.org/resource/'):
+                places.append(normalize(uri_to_string(p)))
+        new_record['birth_place'] = list(set(places))
+
+    if PROP_DEATH_PLACE in record:
+        places = []
+        for p in record[PROP_DEATH_PLACE]:
+            if p.startswith('http://nl.dbpedia.org/resource/'):
+                places.append(normalize(uri_to_string(p)))
+        new_record['death_place'] = list(set(places))
+
     return new_record
 
 @route('/')
@@ -238,6 +247,6 @@ def index(uri=None):
     return record
 
 if __name__ == "__main__":
-    result = index('http://nl.dbpedia.org/resource/Albert_Einstein')
+    result = index('http://nl.dbpedia.org/resource/Ronald_Reagan')
     pprint.pprint(result)
 
