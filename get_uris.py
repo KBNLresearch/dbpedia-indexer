@@ -15,6 +15,7 @@ def get_uris(lang='nl'):
         query = '''
         SELECT DISTINCT ?s WHERE {
             ?s <http://www.w3.org/2000/01/rdf-schema#comment> ?o .
+            ?s <http://www.w3.org/2000/01/rdf-schema#label> ?q .
             FILTER(
                 REGEX(?s, "^http://nl.dbpedia.org/resource/.{2,}", "i") &&
                 !REGEX(?s, "(doorverwijspagina)", "i")
@@ -25,6 +26,7 @@ def get_uris(lang='nl'):
         query = '''
         SELECT DISTINCT ?s WHERE {
             ?s <http://www.w3.org/2000/01/rdf-schema#comment> ?o .
+            ?s <http://www.w3.org/2000/01/rdf-schema#label> ?r .
             FILTER(
                 REGEX(?s, "http://dbpedia.org/resource/.{2,}", "i") &&
                 !REGEX(?s, "(disambiguation)", "i")
@@ -32,6 +34,7 @@ def get_uris(lang='nl'):
             MINUS {
                 ?t <http://www.w3.org/2002/07/owl#sameAs> ?s .
                 ?t <http://www.w3.org/2000/01/rdf-schema#comment> ?q .
+                ?t <http://www.w3.org/2000/01/rdf-schema#label> ?u .
                 FILTER(
                     REGEX(?t, "^http://nl.dbpedia.org/resource/.{2,}", "i")
                 )
