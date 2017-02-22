@@ -2,14 +2,18 @@
 # -*- coding: utf-8 -*-
 
 import json
+import pprint
 import requests
+import sys
 
 from bottle import request
 from bottle import route
 from bottle import default_app
 
-VIRTUOSO_URL = "http://openvirtuoso.kbresearch.nl/sparql?"
-VIRTUOSO_URL += "default-graph-uri=http://dbpedia.org&format=json&query="
+VIRTUOSO_URL = 'http://openvirtuoso.kbresearch.nl/sparql?'
+DEFAULT_GRAPH_URI = 'http://nl.dbpedia.org'
+
+SAME_AS_PROP = 'http://www.w3.org/2002/07/owl#sameAs'
 
 application = default_app()
 
@@ -17,19 +21,19 @@ def get_record(uri):
     '''
     Retrieve all (relevant) triples with specified uri as subject.
     '''
-    payload = {}
-    payload['default-graph-uri'] = 'http://dbpedia.org'
-    payload['format'] = 'json'
-    payload['query'] = '''
+    query = '''
     SELECT ?p ?o WHERE {
         <%(uri)s> ?p ?o .
         FILTER (isLiteral(?o) || regex(?o,'www.wiki') ||
             regex(?o,'//nl.') || regex(?o,'//dbp'))
     }
-    ''' % {"uri":uri}
+    ''' % {"uri": uri}
+
+    payload = {'default-graph-uri': DEFAULT_GRAPH_URI, 'format': 'json',
+            'query': query}
+
     response = requests.get(VIRTUOSO_URL, params=payload)
-    record = json.loads(str(response.text))
-    return record
+    return response.json()
 
 def transform(record):
     '''
@@ -94,15 +98,37 @@ def clean(record, uri):
 
 @route('/')
 def index(uri=None):
+    '''
+    Retrieve and process all info about specified uri.
+    '''
     if not uri:
         uri = request.query.get('uri')
+
+    # Get original record
+    records = []
     record = get_record(uri)
     record = transform(record)
-    record = merge([record])
+    records.append(record)
+
+    # Check for English record if original was Dutch
+    if uri.startswith('http://nl.dbpedia.org/resource/'):
+        same_as_uris = [u for u in record.get(SAME_AS_PROP) if
+                u.startswith('http://dbpedia.org/resource/')]
+        if same_as_uris:
+            for same_as_uri in same_as_uris:
+                same_as_record = transform(get_record(same_as_uri))
+                records.append(same_as_record)
+
+    # Merge records into one
+    record = merge(records)
+    #pprint.pprint(record)
+    #sys.exit()
     record = clean(record, uri)
+    #pprint.pprint(record)
+
     return record
 
 if __name__ == "__main__":
     result = index('http://nl.dbpedia.org/resource/Julie_&_Ludwig')
-    print(result)
+    pprint.pprint(result)
 
