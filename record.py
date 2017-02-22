@@ -15,12 +15,15 @@ DEFAULT_GRAPH_URI = 'http://nl.dbpedia.org'
 FORMAT = 'json'
 
 PROP_ABSTRACT = 'http://www.w3.org/2000/01/rdf-schema#comment'
+PROP_BIRTH_DATE = 'http://dbpedia.org/ontology/birthDate'
+PROP_DEATH_DATE = 'http://dbpedia.org/ontology/deathDate'
 PROP_LABEL = 'http://www.w3.org/2000/01/rdf-schema#label'
 PROP_LINK = 'http://dbpedia.org/ontology/wikiPageWikiLink'
 PROP_NAME = 'http://xmlns.com/foaf/0.1/name'
 PROP_REDIRECT = 'http://dbpedia.org/ontology/wikiPageRedirects'
 PROP_SAME_AS = 'http://www.w3.org/2002/07/owl#sameAs'
 PROP_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'
+
 
 def normalize(s):
     '''
@@ -174,10 +177,33 @@ def clean(record, uri):
     new_record['inlinks'] = max(record['inlinks'])
 
     # Type
-    new_record['dbo_type'] = list(set([t.split('/')[-1] for t in record[PROP_TYPE]
-            if t.startswith('http://dbpedia.org/ontology/')]))
-    new_record['schema_type'] = list(set([t.split('/')[-1] for t in record[PROP_TYPE]
-            if t.startswith('http://schema.org/')]))
+    if PROP_TYPE in record:
+        new_record['dbo_type'] = list(set([t.split('/')[-1] for t in
+            record[PROP_TYPE] if t.startswith('http://dbpedia.org/ontology/')]))
+        new_record['schema_type'] = list(set([t.split('/')[-1] for t in
+            record[PROP_TYPE] if t.startswith('http://schema.org/')]))
+
+    # Categories
+    # E.g. http://nl.dbpedia.org/resource/Categorie:Amerikaans_hoogleraar
+    if PROP_LINK in record:
+        keywords = []
+        for link in record[PROP_LINK]:
+            if link.startswith('http://nl.dbpedia.org/resource/Categorie:'):
+                keywords += [k for k in
+                    normalize(uri_to_string(link)).split()[1:] if len(k) >= 5]
+        keywords = list(set(keywords))
+        for k in pref_label.split():
+            if k in keywords:
+                keywords.remove(k)
+    new_record['keyword'] = keywords
+
+    # Birth and death date
+    if PROP_BIRTH_DATE in record:
+        new_record['birth_year'] = min([int(y.split('-')[0]) for y in
+            record[PROP_BIRTH_DATE]])
+    if PROP_DEATH_DATE in record:
+        new_record['death_year'] = max([int(y.split('-')[0]) for y in
+            record[PROP_DEATH_DATE]])
 
     return new_record
 
@@ -204,7 +230,7 @@ def index(uri=None):
 
     # Merge records into one
     record = merge(records)
-    #pprint.pprint(record)
+    pprint.pprint(record)
     #sys.exit()
     record = clean(record, uri)
     #pprint.pprint(record)
