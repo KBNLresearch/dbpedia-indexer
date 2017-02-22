@@ -4,7 +4,7 @@
 import os
 import requests
 
-VIRTUOSO_URL = 'http://openvirtuoso.kbresearch.nl/sparql?
+VIRTUOSO_URL = 'http://openvirtuoso.kbresearch.nl/sparql?'
 DEFAULT_GRAPH_URI = 'http://nl.dbpedia.org'
 
 def get_uris(lang='nl'):
