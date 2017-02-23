@@ -25,9 +25,11 @@ def skip(uri, msg):
 for f in [URIS_NL, URIS_EN]:
     with open(f, 'rb') as fh:
         for uri in fh:
+            uri = uri.decode('utf-8')
+            uri = uri.split()[0]
+
             retries = 0
             payload = None
-            uri = uri[:-1].decode('utf-8')
             while not payload and retries < 5:
                 try:
                     r = record.index(uri)
@@ -35,15 +37,15 @@ for f in [URIS_NL, URIS_EN]:
                     print(payload)
                 except:
                     retries += 1
-                    time.sleep(3)
+                    time.sleep(1)
                     continue
             if not payload:
                 skip(uri, 'VOS error')
                 continue
-
+            '''
             try:
                 response = requests.post(SOLR_URL, data=payload, headers=headers)
                 print(response.text)
             except:
                 skip(uri, 'SOLR error')
-
+            '''
