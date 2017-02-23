@@ -195,11 +195,15 @@ def clean(record, uri):
 
     # Types
     if PROP_TYPE in record:
-        new_record['dbo_type'] = list(set([t.split('/')[-1] for t in
+        dbo_types = list(set([t.split('/')[-1] for t in
             record[PROP_TYPE] if t.startswith('http://dbpedia.org/ontology/')
             and t.find('Wikidata:') < 0]))
-        new_record['schema_type'] = list(set([t.split('/')[-1] for t in
+        if dbo_types:
+            new_record['dbo_type'] = dbo_types
+        schema_types = list(set([t.split('/')[-1] for t in
             record[PROP_TYPE] if t.startswith('http://schema.org/')]))
+        if schema_types:
+            new_record['schema_type'] = schema_types
 
     # Keywords
     # E.g. http://nl.dbpedia.org/resource/Categorie:Amerikaans_hoogleraar
