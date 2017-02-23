@@ -4,6 +4,8 @@
 import json
 import pprint
 import requests
+import urllib
+
 import xml.etree.ElementTree as ET
 
 from bottle import request
@@ -39,7 +41,6 @@ def get_prop(uri, prop, subject=True):
     '''
     Retrieve all property values with specified uri as either subject or object.
     '''
-    print(uri, prop, subject)
     subj = '<' + uri + '>' if subject else '?x'
     obj = '?x' if subject else '<' + uri + '>'
     query = '''
@@ -52,7 +53,6 @@ def get_prop(uri, prop, subject=True):
     payload = {'default-graph-uri': DEFAULT_GRAPH_URI, 'format': FORMAT,
             'query': query}
     response = requests.get(VIRTUOSO_URL, params=payload)
-
     root = ET.fromstring(response.text)
 
     values = []
@@ -65,7 +65,6 @@ def get_record(uri):
     '''
     Retrieve all (relevant) triples with specified uri as subject.
     '''
-    print(uri)
     query = '''
     SELECT ?p ?o WHERE {
         <%(uri)s> ?p ?o .
@@ -77,9 +76,7 @@ def get_record(uri):
 
     payload = {'default-graph-uri': DEFAULT_GRAPH_URI, 'format': FORMAT,
             'query': query}
-
     response = requests.get(VIRTUOSO_URL, params=payload)
-
     root = ET.fromstring(response.text)
 
     record = {}
@@ -129,6 +126,7 @@ def uri_to_string(uri):
     '''
     Transform a dbpedia resource uri into a string.
     '''
+    s = urllib.parse.unquote(s)
     s = uri.split('/resource/')[-1]
     s = s.replace('_', ' ')
     if ' (' in s and ')' in s:
@@ -296,6 +294,6 @@ def index(uri=None):
     return record
 
 if __name__ == "__main__":
-    result = index('http://nl.dbpedia.org/resource/Drusus_Claudius_Nero')
+    result = index('http://nl.dbpedia.org/resource/Shinkansen')
     pprint.pprint(result)
 
