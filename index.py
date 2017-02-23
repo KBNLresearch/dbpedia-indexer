@@ -42,10 +42,14 @@ for f in [URIS_NL, URIS_EN]:
             if not payload:
                 skip(uri, 'VOS error')
                 continue
-            '''
+
             try:
                 response = requests.post(SOLR_URL, data=payload, headers=headers)
                 print(response.text)
+                response = response.json()
+                status = response['responseHeader']['status']
+                if status != 0:
+                    raise
             except:
                 skip(uri, 'SOLR error')
-            '''
+
