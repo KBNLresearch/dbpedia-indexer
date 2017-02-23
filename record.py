@@ -32,6 +32,7 @@ PROP_REDIRECT = 'http://dbpedia.org/ontology/wikiPageRedirects'
 PROP_SAME_AS = 'http://www.w3.org/2002/07/owl#sameAs'
 PROP_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'
 
+application = default_app()
 
 def get_prop(uri, prop, subject=True):
     '''
@@ -151,6 +152,17 @@ def clean(record, uri):
     new_record['pref_label'] = pref_label
     new_record['pref_label_str'] = pref_label
 
+    # Normalized last part
+    parts = pref_label.split()
+    last_part = None
+    for part in reversed(parts):
+        if not part.isdigit():
+            last_part = part
+            break
+    if last_part:
+        new_record['last_part'] = last_part
+        new_record['last_part_str'] = last_part
+
     # Normalized alt labels
     alt_label = []
 
@@ -173,13 +185,19 @@ def clean(record, uri):
         if len(set(l.split()) & set(pref_label.split())) == len(l.split()):
             alt_label.remove(l)
 
+    for l in alt_label[:]:
+        if (l.find('/') > -1 or l.find('|') > -1 or l.find('(') > -1 or
+                l.find(')') > -1):
+            alt_label.remove(l)
+
     new_record['alt_label'] = alt_label
     new_record['alt_label_str'] = alt_label
 
     # Types
     if PROP_TYPE in record:
         new_record['dbo_type'] = list(set([t.split('/')[-1] for t in
-            record[PROP_TYPE] if t.startswith('http://dbpedia.org/ontology/')]))
+            record[PROP_TYPE] if t.startswith('http://dbpedia.org/ontology/')
+            and t.find('Wikidata:') < 0]))
         new_record['schema_type'] = list(set([t.split('/')[-1] for t in
             record[PROP_TYPE] if t.startswith('http://schema.org/')]))
 
@@ -253,6 +271,6 @@ def index(uri=None):
     return record
 
 if __name__ == "__main__":
-    result = index('http://nl.dbpedia.org/resource/Rode_Kruis')
+    result = index('http://nl.dbpedia.org/resource/Drusus_Claudius_Nero')
     pprint.pprint(result)
 
