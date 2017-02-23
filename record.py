@@ -73,7 +73,7 @@ def get_record(uri):
             'query': query}
 
     response = requests.get(VIRTUOSO_URL, params=payload)
-    response = response.json()
+    response = json.loads(response.text.encode('utf-8').decode('unicode_escape'))
 
     record = {}
     for triple in response.get('results').get('bindings'):
@@ -271,6 +271,6 @@ def index(uri=None):
     return record
 
 if __name__ == "__main__":
-    result = index('http://nl.dbpedia.org/resource/Vlag_van_Bulgarije')
+    result = index('http://nl.dbpedia.org/resource/Helicophagus_typus')
     pprint.pprint(result)
 
