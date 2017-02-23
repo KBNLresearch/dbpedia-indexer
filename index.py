@@ -2,10 +2,12 @@
 # -*- coding: utf-8 -*-
 
 import json
+import os
 import record
 import requests
 import time
 
+TEST = 'uris_test.txt'
 URIS_NL = 'uris_nl.txt'
 URIS_EN = 'uris_en.txt'
 LOG = 'log.txt'
@@ -14,32 +16,34 @@ SOLR_URL = 'http://sara-backup:8082/solr/dbpedia/update/json/docs'
 
 headers = {'Content-Type': 'application/json'}
 
-def skip(uri):
+def skip(uri, msg):
     mode = 'ab' if os.path.exists(LOG) else 'wb'
     with open(LOG, mode) as fh:
-        fh.write(uri)
+        fh.write(uri.encode('utf-8') + ' '.encode('utf-8')
+                + msg.encode('utf-8') + '\n'.encode('utf-8'))
 
-for f in [URIS_EN, URIS_EN]:
+for f in [URIS_NL, URIS_EN]:
     with open(f, 'rb') as fh:
         for uri in fh:
             retries = 0
             payload = None
+            uri = uri[:-1].decode('utf-8')
             while not payload and retries < 5:
                 try:
-                    r = record.index(uri[:-1].decode('utf-8'))
-                    payload = json.dumps(r, ensure_ascii=False)
+                    r = record.index(uri)
+                    payload = json.dumps(r, ensure_ascii=False).encode('utf-8')
                     print(payload)
                 except:
                     retries += 1
-                    time.sleep(1)
+                    time.sleep(3)
                     continue
             if not payload:
-                skip(uri)
+                skip(uri, 'VOS error')
                 continue
-            '''
+
             try:
                 response = requests.post(SOLR_URL, data=payload, headers=headers)
                 print(response.text)
             except:
-                skip(uri)
-            '''
+                skip(uri, 'SOLR error')
+
