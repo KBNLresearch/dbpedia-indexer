@@ -4,6 +4,7 @@
 import json
 import pprint
 import requests
+import xml.etree.ElementTree as ET
 
 from bottle import request
 from bottle import route
@@ -13,7 +14,7 @@ from unidecode import unidecode
 
 VIRTUOSO_URL = 'http://openvirtuoso.kbresearch.nl/sparql?'
 DEFAULT_GRAPH_URI = 'http://nl.dbpedia.org'
-FORMAT = 'json'
+FORMAT = 'xml'
 
 PROP_ABSTRACT = 'http://www.w3.org/2000/01/rdf-schema#comment'
 PROP_ALIAS = 'http://dbpedia.org/ontology/alias'
@@ -38,6 +39,7 @@ def get_prop(uri, prop, subject=True):
     '''
     Retrieve all property values with specified uri as either subject or object.
     '''
+    print(uri, prop, subject)
     subj = '<' + uri + '>' if subject else '?x'
     obj = '?x' if subject else '<' + uri + '>'
     query = '''
@@ -50,11 +52,12 @@ def get_prop(uri, prop, subject=True):
     payload = {'default-graph-uri': DEFAULT_GRAPH_URI, 'format': FORMAT,
             'query': query}
     response = requests.get(VIRTUOSO_URL, params=payload)
-    response = json.loads(response.text.encode('utf-8').decode('unicode_escape'))
+
+    root = ET.fromstring(response.text)
 
     values = []
-    for triple in response.get('results').get('bindings'):
-        values.append(triple.get('x').get('value'))
+    for result in root[1]:
+        values.append(result[0][0].text)
 
     return values
 
@@ -62,9 +65,12 @@ def get_record(uri):
     '''
     Retrieve all (relevant) triples with specified uri as subject.
     '''
+    print(uri)
     query = '''
     SELECT ?p ?o WHERE {
         <%(uri)s> ?p ?o .
+        FILTER(isLiteral(?o) || regex(?o, 'http://dbpedia.org') ||
+            regex(?o, 'http://nl.dbpedia.org')||regex(?o, 'http://schema.org'))
     }
     ''' % {'uri': uri}
     query = ' '.join(query.split())
@@ -73,12 +79,13 @@ def get_record(uri):
             'query': query}
 
     response = requests.get(VIRTUOSO_URL, params=payload)
-    response = json.loads(response.text.encode('utf-8').decode('unicode_escape'))
+
+    root = ET.fromstring(response.text)
 
     record = {}
-    for triple in response.get('results').get('bindings'):
-        key = triple.get('p').get('value')
-        value = triple.get('o').get('value')
+    for result in root[1]:
+        key = result[0][0].text
+        value = result[1][0].text
         if key in record:
             record[key].append(value)
         else:
@@ -275,6 +282,6 @@ def index(uri=None):
     return record
 
 if __name__ == "__main__":
-    result = index('http://nl.dbpedia.org/resource/Helicophagus_typus')
+    result = index('http://nl.dbpedia.org/resource/Drusus_Claudius_Nero')
     pprint.pprint(result)
 
