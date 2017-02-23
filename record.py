@@ -50,7 +50,7 @@ def get_prop(uri, prop, subject=True):
     payload = {'default-graph-uri': DEFAULT_GRAPH_URI, 'format': FORMAT,
             'query': query}
     response = requests.get(VIRTUOSO_URL, params=payload)
-    response = response.json()
+    response = json.loads(response.text.encode('utf-8').decode('unicode_escape'))
 
     values = []
     for triple in response.get('results').get('bindings'):
@@ -271,6 +271,6 @@ def index(uri=None):
     return record
 
 if __name__ == "__main__":
-    result = index('http://nl.dbpedia.org/resource/Drusus_Claudius_Nero')
+    result = index('http://nl.dbpedia.org/resource/Vlag_van_Bulgarije')
     pprint.pprint(result)
 
