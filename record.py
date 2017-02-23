@@ -126,7 +126,7 @@ def uri_to_string(uri):
     '''
     Transform a dbpedia resource uri into a string.
     '''
-    s = urllib.parse.unquote(s)
+    uri = urllib.parse.unquote(uri)
     s = uri.split('/resource/')[-1]
     s = s.replace('_', ' ')
     if ' (' in s and ')' in s:
