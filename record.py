@@ -228,11 +228,25 @@ def clean(record, uri):
 
     # Birth and death date
     if PROP_BIRTH_DATE in record:
-        new_record['birth_year'] = min([int(y.split('-')[0]) for y in
-            record[PROP_BIRTH_DATE]])
+        cand = []
+        for date in record[PROP_BIRTH_DATE]:
+            try:
+                # E.g. -013-10-07+01:00
+                cand.append(int(date[:4]))
+            except:
+                continue
+        if cand:
+            new_record['birth_year'] = min(cand)
     if PROP_DEATH_DATE in record:
-        new_record['death_year'] = max([int(y.split('-')[0]) for y in
-            record[PROP_DEATH_DATE]])
+        cand = []
+        for date in record[PROP_DEATH_DATE]:
+            try:
+                # E.g. -013-10-07+01:00
+                cand.append(int(date[:4]))
+            except:
+                continue
+        if cand:
+            new_record['death_year'] = min(cand)
 
     # Birth and death place
     if PROP_BIRTH_PLACE in record:
