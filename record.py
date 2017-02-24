@@ -288,8 +288,8 @@ def transform(record, uri):
             ('schema_type' in document and 'Person' in document['schema_type'])):
         last_name = get_last_name(pref_label)
         if last_name:
-            document['last_name'] = last_name
-            document['last_name_str'] = last_name
+            document['last_part'] = last_name
+            document['last_part_str'] = last_name
 
     # Birth and death dates, taking the minimum of multiple birth date options
     # and the maximum of multiple death dates
