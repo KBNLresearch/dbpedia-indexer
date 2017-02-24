@@ -25,9 +25,6 @@ import record
 import requests
 import time
 
-TEST = 'uris_test.txt'
-URIS_NL = 'uris_nl.txt'
-URIS_EN = 'uris_en.txt'
 LOG = 'log.txt'
 
 SOLR_URL = 'http://sara-backup:8082/solr/dbpedia/update/json/docs'
@@ -35,12 +32,18 @@ SOLR_URL = 'http://sara-backup:8082/solr/dbpedia/update/json/docs'
 headers = {'Content-Type': 'application/json'}
 
 def skip(uri, msg):
+    '''
+    Log problematic URIs.
+    '''
     mode = 'ab' if os.path.exists(LOG) else 'wb'
     with open(LOG, mode) as fh:
         fh.write(uri.encode('utf-8') + ' '.encode('utf-8')
                 + msg.encode('utf-8') + '\n'.encode('utf-8'))
 
-for f in [URIS_NL, URIS_EN]:
+def index_list(f):
+    '''
+    Retrieve document for each URI on the list and send it to Solr.
+    '''
     with open(f, 'rb') as fh:
         i = 0
         for uri in fh:
@@ -54,7 +57,7 @@ for f in [URIS_NL, URIS_EN]:
             payload = None
             while not payload and retries < 5:
                 try:
-                    r = record.index(uri)
+                    r = record.get_document(uri)
                     payload = json.dumps(r, ensure_ascii=False).encode('utf-8')
                     # print(payload)
                 except:
@@ -75,3 +78,6 @@ for f in [URIS_NL, URIS_EN]:
             except:
                 skip(uri, 'SOLR error')
 
+if __name__ == "__main__":
+    index_list('uris_nl.txt')
+    index_list('uris_en.txt')
