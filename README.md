@@ -1,10 +1,6 @@
 # DBpedia index
 
-Collection of Python scripts to build a Solr index from a subset of the Dutch and English DBpedia dumps for use with our [entity linker] (https://github.com/jlonij/disambiguation). 
-
-## Data
-
-The list of dumps used can be found in `dumps.txt`. The dumps were taken from the [2016-04 Downloads] (http://wiki.dbpedia.org/downloads-2016-04) dataset and loaded into a local Virtuoso triple store graph.
+Collection of Python scripts to build a Solr index from a subset of the Dutch and English DBpedia dumps for use with our [entity linker] (https://github.com/jlonij/disambiguation). The dumps were taken from the [2016-04 Downloads] (http://wiki.dbpedia.org/downloads-2016-04) dataset and loaded into a local Virtuoso triple store graph.
 
 ## Usage
 
