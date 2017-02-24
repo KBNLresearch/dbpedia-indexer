@@ -20,6 +20,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 import pprint
+import re
 import requests
 import urllib
 
@@ -158,21 +159,33 @@ def uri_to_string(uri, spec=False):
 
     return s
 
-def is_roman_numeral(s):
+def get_last_name(s):
     '''
-    Check if a string is a Roman numeral.
+    Extract probable last name from a string, excluding numbers, Roman numerals
+    and some well-known suffixes.
     '''
-    return False
+    last_name = None
 
-def is_suffix(s):
-    '''
-    Check if a string is a suffix that shouldn't qualify as last name.
-    '''
+    # Some suffixes that shouldn't qualify as last names
     suffixes = ['jr', 'sr', 'z', 'zn', 'fils']
-    if s in suffixes:
-        return True
-    else:
-        return False
+
+    # Regex to match Roman numerals
+    pattern = '^M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$'
+
+    parts = s.split()
+
+    for part in reversed(parts):
+        if parts.index(part) == 0:
+            continue
+        if part.isdigit():
+            continue
+        if part in suffixes:
+            continue
+        if re.match(pattern, part, flags=re.IGNORECASE):
+            continue
+        last_name = part
+
+    return last_name
 
 def transform(record, uri):
     '''
@@ -270,19 +283,13 @@ def transform(record, uri):
         document['schema_type'] = list(set([t.split('/')[-1] for t in
             record[PROP_TYPE] if t.startswith('http://schema.org/')]))
 
-    # Normalized last part (i.e. last name), for persons only
+    # Probable last name, for persons only
     if (('dbo_type' in document and 'Person' in document['dbo_type']) or
             ('schema_type' in document and 'Person' in document['schema_type'])):
-        parts = pref_label.split()
-        last_part = None
-        for part in reversed(parts):
-            if parts.index(part) > 0 and not part.isdigit():
-                if not is_suffix(part) and not is_roman_numeral(part):
-                    last_part = part
-                    break
-        if last_part:
-            document['last_part'] = last_part
-            document['last_part_str'] = last_part
+        last_name = get_last_name(pref_label)
+        if last_name:
+            document['last_name'] = last_name
+            document['last_name_str'] = last_name
 
     # Birth and death dates, taking the minimum of multiple birth date options
     # and the maximum of multiple death dates
@@ -354,6 +361,6 @@ def get_document(uri=None):
     return document
 
 if __name__ == "__main__":
-    result = get_document('http://dbpedia.org/resource/Anton_Chekhov')
+    result = get_document('http://nl.dbpedia.org/resource/Artabanus_IV')
     pprint.pprint(result)
 
