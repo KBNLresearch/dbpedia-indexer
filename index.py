@@ -24,7 +24,11 @@ def skip(uri, msg):
 
 for f in [URIS_NL, URIS_EN]:
     with open(f, 'rb') as fh:
+        i = 0
         for uri in fh:
+            i += 1
+            if i % 10 == 0:
+                print('Processing record:' + str(i))
             uri = uri.decode('utf-8')
             uri = uri.split()[0]
 
@@ -34,7 +38,7 @@ for f in [URIS_NL, URIS_EN]:
                 try:
                     r = record.index(uri)
                     payload = json.dumps(r, ensure_ascii=False).encode('utf-8')
-                    print(payload)
+                    # print(payload)
                 except:
                     retries += 1
                     time.sleep(1)
@@ -45,7 +49,7 @@ for f in [URIS_NL, URIS_EN]:
 
             try:
                 response = requests.post(SOLR_URL, data=payload, headers=headers)
-                print(response.text)
+                # print(response.text)
                 response = response.json()
                 status = response['responseHeader']['status']
                 if status != 0:
