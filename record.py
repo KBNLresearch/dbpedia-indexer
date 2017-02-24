@@ -19,7 +19,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-import json
 import pprint
 import requests
 import urllib
@@ -130,7 +129,7 @@ def merge(records):
 
 def normalize(s):
     '''
-    Normalize string by removing punctuation and capitalization.
+    Normalize string by removing punctuation, capitalization, diacritics.
     '''
     chars = ['.', ',', ':', '?', '!', ';', '-', '\u2013']
     for c in chars:
@@ -140,138 +139,181 @@ def normalize(s):
     s = ' '.join(s.split())
     return s
 
-def uri_to_string(uri):
+def uri_to_string(uri, spec=False):
     '''
     Transform a dbpedia resource uri into a string.
     '''
     uri = urllib.parse.unquote(uri)
     s = uri.split('/resource/')[-1]
     s = s.replace('_', ' ')
+
     if ' (' in s and ')' in s:
-        s = s.split(' (')[0]
+        if spec:
+            s = s.split(' (')[1].split(')')[0]
+        else:
+            s = s.split(' (')[0]
+    elif spec:
+        return None
     s = ' '.join(s.split())
+
     return s
 
-def clean(record, uri):
+def is_roman_numeral(s):
     '''
-    Extract and clean up the data that is to be indexed.
+    Check if a string is a Roman numeral.
     '''
-    new_record = {}
+    return False
 
-    new_record['id'] = uri
-    new_record['label'] = record[PROP_LABEL][0]
-    new_record['abstract'] = record[PROP_ABSTRACT][0]
-    new_record['lang'] = 'nl' if uri.startswith('http://nl.') else 'en'
-    new_record['inlinks'] = max(record['inlinks'])
-
-    # Ambiguity flag
-    if ' (' in uri and ')' in uri:
-        new_record['ambig'] = 1
+def is_suffix(s):
+    '''
+    Check if a string is a suffix that shouldn't qualify as last name.
+    '''
+    suffixes = ['jr', 'sr', 'z', 'zn', 'fils']
+    if s in suffixes:
+        return True
     else:
-        new_record['ambig'] = 0
+        return False
 
-    # Normalized pref label
-    pref_label = normalize(new_record['label'])
-    new_record['pref_label'] = pref_label
-    new_record['pref_label_str'] = pref_label
+def transform(record, uri):
+    '''
+    Extract the relevant data and return a Solr document dict.
+    '''
+    document = {}
 
-    # Normalized last part
-    parts = pref_label.split()
-    last_part = None
-    for part in reversed(parts):
-        if not part.isdigit():
-            last_part = part
-            break
-    if last_part:
-        new_record['last_part'] = last_part
-        new_record['last_part_str'] = last_part
+    # The DBpedia URI as document id
+    document['id'] = uri
 
-    # Normalized alt labels
+    # The first (i.e. Dutch if available) label
+    document['label'] = record[PROP_LABEL][0]
+
+    # The first (i.e. Dutch if available) abstract
+    document['abstract'] = record[PROP_ABSTRACT][0]
+
+    # Language of the (primary) resource description
+    document['lang'] = 'nl' if uri.startswith('http://nl.') else 'en'
+
+    # Number of inlinks, the max of Dutch and English counts
+    document['inlinks'] = max(record['inlinks'])
+
+    # Set ambiguity flag if specification between brackets present in URI and
+    # save the specification
+    if '_(' in uri and ')' in uri:
+        document['ambig'] = 1
+        document['spec'] = normalize(uri_to_string(uri, True))
+    else:
+        document['ambig'] = 0
+
+    # Normalized pref label, based on the label without specification
+    # between brackets
+    pref_label = normalize(document['label'])
+    if ' (' in pref_label and ')' in pref_label:
+        pref_label = pref_label.split(' (')[0]
+    document['pref_label'] = pref_label
+    document['pref_label_str'] = pref_label
+
+    # Normalized alt labels extracted form various name fields as well as
+    # redirects
     alt_label = []
 
     cand = record[PROP_LABEL][1:]
-    props = [PROP_NAME, PROP_NICK_NAME, PROP_BIRTH_NAME, PROP_GIVEN_NAME,
-        PROP_LONG_NAME, PROP_ALIAS]
+    props = [PROP_NAME, PROP_BIRTH_NAME, PROP_GIVEN_NAME,
+        PROP_LONG_NAME, PROP_ALIAS, PROP_NICK_NAME]
     for p in props:
         if p in record:
             cand += record[p]
     if PROP_REDIRECT in record:
-        cand += [uri_to_string(u) for u in record[PROP_REDIRECT]]
+        cand += [uri_to_string(u) for u in record[PROP_REDIRECT] if
+            u.startswith(uri[:10])]
 
+    # Exclude alt labels identical to the pref label
     for l in cand:
         l_norm = normalize(l)
         if l_norm != pref_label:
             if l_norm not in alt_label:
                 alt_label.append(l_norm)
 
+    # Exclude alt labels that contain only words from the pref label
     for l in alt_label[:]:
         if len(set(l.split()) & set(pref_label.split())) == len(l.split()):
             alt_label.remove(l)
 
-    for l in alt_label[:]:
-        if (l.find('/') > -1 or l.find('|') > -1 or l.find('(') > -1 or
-                l.find(')') > -1):
-            alt_label.remove(l)
+    # Exclude other unwanted alt labels
+    unwanted = ['/', '|']
+    for s in unwanted:
+        for l in alt_label[:]:
+            if l.find(s) > -1:
+                alt_label.remove(l)
 
-    new_record['alt_label'] = alt_label
-    new_record['alt_label_str'] = alt_label
+    document['alt_label'] = alt_label
+    document['alt_label_str'] = alt_label
 
-    # Types
-    if PROP_TYPE in record:
-        dbo_types = list(set([t.split('/')[-1] for t in
-            record[PROP_TYPE] if t.startswith('http://dbpedia.org/ontology/')
-            and t.find('Wikidata:') < 0]))
-        if dbo_types:
-            new_record['dbo_type'] = dbo_types
-        schema_types = list(set([t.split('/')[-1] for t in
-            record[PROP_TYPE] if t.startswith('http://schema.org/')]))
-        if schema_types:
-            new_record['schema_type'] = schema_types
-
-    # Keywords
-    # E.g. http://nl.dbpedia.org/resource/Categorie:Amerikaans_hoogleraar
+    # Keywords extracted from Dutch DBpedia category links, e.g.
+    # http://nl.dbpedia.org/resource/Categorie:Amerikaans_hoogleraar
     if PROP_LINK in record:
         keywords = []
         for link in record[PROP_LINK]:
             if link.startswith('http://nl.dbpedia.org/resource/Categorie:'):
-                keywords += [k for k in
-                    normalize(uri_to_string(link)).split()[1:] if len(k) >= 5]
+                # Crude stop word filtering. Use list instead?
+                keywords += [normalize(k) for k in
+                        uri_to_string(link).split()[1:] if len(k) >= 5]
         keywords = list(set(keywords))
         for k in pref_label.split():
             if k in keywords:
                 keywords.remove(k)
-    new_record['keyword'] = keywords
+        document['keyword'] = keywords
 
-    # Birth and death date
+    # DBpedia ontology and schema.org types
+    if PROP_TYPE in record:
+        document['dbo_type'] = list(set([t.split('/')[-1] for t in
+            record[PROP_TYPE] if t.startswith('http://dbpedia.org/ontology/')
+            and t.find('Wikidata:') < 0 and t.find('>') < 0]))
+        document['schema_type'] = list(set([t.split('/')[-1] for t in
+            record[PROP_TYPE] if t.startswith('http://schema.org/')]))
+
+    # Normalized last part (i.e. last name), for persons only
+    if (('dbo_type' in document and 'Person' in document['dbo_type']) or
+            ('schema_type' in document and 'Person' in document['schema_type'])):
+        parts = pref_label.split()
+        last_part = None
+        for part in reversed(parts):
+            if parts.index(part) > 0 and not part.isdigit():
+                if not is_suffix(part) and not is_roman_numeral(part):
+                    last_part = part
+                    break
+        if last_part:
+            document['last_part'] = last_part
+            document['last_part_str'] = last_part
+
+    # Birth and death dates, taking the minimum of multiple birth date options
+    # and the maximum of multiple death dates
+    # E.g. -013-10-07+01:00
     if PROP_BIRTH_DATE in record:
         cand = []
         for date in record[PROP_BIRTH_DATE]:
             try:
-                # E.g. -013-10-07+01:00
                 cand.append(int(date[:4]))
             except:
                 continue
         if cand:
-            new_record['birth_year'] = min(cand)
+            document['birth_year'] = min(cand)
     if PROP_DEATH_DATE in record:
         cand = []
         for date in record[PROP_DEATH_DATE]:
             try:
-                # E.g. -013-10-07+01:00
                 cand.append(int(date[:4]))
             except:
                 continue
         if cand:
-            new_record['death_year'] = min(cand)
+            document['death_year'] = max(cand)
 
-    # Birth and death place
+    # Birth and death places, giving preference to Dutch options
     if PROP_BIRTH_PLACE in record:
         places = [normalize(uri_to_string(p)) for p in record[PROP_BIRTH_PLACE]
             if p.startswith('http://nl.dbpedia.org/resource/')]
         if not places:
             places = [normalize(uri_to_string(p)) for p in record[PROP_BIRTH_PLACE]
                 if p.startswith('http://dbpedia.org/resource/')]
-        new_record['birth_place'] = list(set(places))
+        document['birth_place'] = list(set(places))
 
     if PROP_DEATH_PLACE in record:
         places = [normalize(uri_to_string(p)) for p in record[PROP_DEATH_PLACE]
@@ -279,12 +321,12 @@ def clean(record, uri):
         if not places:
             places = [normalize(uri_to_string(p)) for p in record[PROP_DEATH_PLACE]
                 if p.startswith('http://dbpedia.org/resource/')]
-        new_record['death_place'] = list(set(places))
+        document['death_place'] = list(set(places))
 
-    return new_record
+    return document
 
 @route('/')
-def index(uri=None):
+def get_document(uri=None):
     '''
     Retrieve and process all info about specified uri.
     '''
@@ -301,17 +343,17 @@ def index(uri=None):
         same_as_uris = []
         if PROP_SAME_AS in record:
             same_as_uris = [u for u in record.get(PROP_SAME_AS) if
-                    u.startswith('http://dbpedia.org/resource/')]
+                u.startswith('http://dbpedia.org/resource/')]
         if same_as_uris:
             for same_as_uri in same_as_uris:
                 records.append(get_record(same_as_uri))
 
     # Merge records into one
     record = merge(records)
-    record = clean(record, uri)
-    return record
+    document = transform(record, uri)
+    return document
 
 if __name__ == "__main__":
-    result = index('http://nl.dbpedia.org/resource/Shinkansen')
+    result = get_document('http://dbpedia.org/resource/Anton_Chekhov')
     pprint.pprint(result)
 
