@@ -27,7 +27,8 @@ import time
 
 LOG = 'log.txt'
 
-SOLR_URL = 'http://sara-backup:8082/solr/dbpedia/update/json/docs'
+SOLR_UPDATE_URL = 'http://sara-backup:8082/solr/dbpedia/update'
+SOLR_JSON_URL = SOLR_UPDATE_URL + '/json/docs'
 
 headers = {'Content-Type': 'application/json'}
 
@@ -47,9 +48,15 @@ def index_list(f):
     with open(f, 'rb') as fh:
         i = 0
         for uri in fh:
+            # Keep a counter
             i += 1
             if i % 10 == 0:
                 print('Processing record:' + str(i))
+            # Commit after every 100 requests
+            if i % 100 == 0:
+                r = requests.get(SOLR_UPDATE_URL + '?commit=true')
+                print('Committing changes...')
+                print(r.text)
             uri = uri.decode('utf-8')
             uri = uri.split()[0]
 
@@ -69,7 +76,7 @@ def index_list(f):
                 continue
 
             try:
-                response = requests.post(SOLR_URL, data=payload, headers=headers)
+                response = requests.post(SOLR_JSON_URL, data=payload, headers=headers)
                 # print(response.text)
                 response = response.json()
                 status = response['responseHeader']['status']
