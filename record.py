@@ -135,6 +135,7 @@ def normalize(s):
     chars = ['.', ',', ':', '?', '!', ';', '-', '\u2013']
     for c in chars:
         s = s.replace(c, ' ')
+    s = s.replace("'", '')
     s = unidecode(s)
     s = s.lower()
     s = ' '.join(s.split())
