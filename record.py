@@ -132,13 +132,21 @@ def normalize(s):
     '''
     Normalize string by removing punctuation, capitalization, diacritics.
     '''
-    chars = ['.', ',', ':', '?', '!', ';', '-', '\u2013']
+    chars = ['/', '.', ',', ':', '?', '!', ';', '-', '\u2013']
     for c in chars:
         s = s.replace(c, ' ')
     s = s.replace("'", '')
     s = unidecode(s)
     s = s.lower()
     s = ' '.join(s.split())
+    return s
+
+def remove_spec(s):
+    '''
+    Remove the specification between brackets, if any, from a string.
+    '''
+    if ' (' in s and ')' in s:
+        s = s.split(' (')[0]
     return s
 
 def uri_to_string(uri, spec=False):
@@ -219,9 +227,7 @@ def transform(record, uri):
 
     # Normalized pref label, based on the label without specification
     # between brackets
-    pref_label = normalize(document['label'])
-    if ' (' in pref_label and ')' in pref_label:
-        pref_label = pref_label.split(' (')[0]
+    pref_label = normalize(remove_spec(document['label']))
     document['pref_label'] = pref_label
     document['pref_label_str'] = pref_label
 
@@ -241,7 +247,7 @@ def transform(record, uri):
 
     # Exclude alt labels identical to the pref label
     for l in cand:
-        l_norm = normalize(l)
+        l_norm = normalize(remove_spec(l))
         if l_norm != pref_label:
             if l_norm not in alt_label:
                 alt_label.append(l_norm)
@@ -362,6 +368,6 @@ def get_document(uri=None):
     return document
 
 if __name__ == "__main__":
-    result = get_document('http://nl.dbpedia.org/resource/Artabanus_IV')
+    result = get_document('http://nl.dbpedia.org/resource/Princeton_(New_Jersey)')
     pprint.pprint(result)
 
