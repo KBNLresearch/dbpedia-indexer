@@ -32,14 +32,14 @@ SOLR_JSON_URL = SOLR_UPDATE_URL + '/json/docs'
 
 headers = {'Content-Type': 'application/json'}
 
-def skip(uri, msg):
+def skip(i, uri, msg):
     '''
     Log problematic URIs.
     '''
     mode = 'ab' if os.path.exists(LOG) else 'wb'
     with open(LOG, mode) as fh:
-        fh.write(uri.encode('utf-8') + ' '.encode('utf-8')
-                + msg.encode('utf-8') + '\n'.encode('utf-8'))
+        fh.write(uri.encode('utf-8') + (' ' + str(i) + ' ' + msg +
+            '\n').encode('utf-8'))
 
 def index_list(f):
     '''
@@ -66,25 +66,31 @@ def index_list(f):
                 try:
                     r = record.get_document(uri)
                     payload = json.dumps(r, ensure_ascii=False).encode('utf-8')
-                    # print(payload)
+                    #print(payload)
                 except:
                     retries += 1
                     time.sleep(1)
                     continue
             if not payload:
-                skip(uri, 'VOS error')
+                skip(i, uri, 'VOS error')
                 continue
 
             try:
                 response = requests.post(SOLR_JSON_URL, data=payload, headers=headers)
-                # print(response.text)
+                #print(response.text)
                 response = response.json()
                 status = response['responseHeader']['status']
                 if status != 0:
                     raise
             except:
-                skip(uri, 'SOLR error')
+                skip(i, uri, 'SOLR error')
+
+    # Commit at end of file
+    r = requests.get(SOLR_UPDATE_URL + '?commit=true')
+    print('Committing changes...')
+    print(r.text)
 
 if __name__ == "__main__":
     index_list('uris_nl.txt')
     index_list('uris_en.txt')
+
