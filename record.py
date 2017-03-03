@@ -269,13 +269,14 @@ def transform(record, uri):
 
     # Keywords extracted from Dutch DBpedia category links, e.g.
     # http://nl.dbpedia.org/resource/Categorie:Amerikaans_hoogleraar
+    # should return ['amerikaans', 'hoogleraar']
     if PROP_LINK in record:
         keywords = []
         for link in record[PROP_LINK]:
             if link.startswith('http://nl.dbpedia.org/resource/Categorie:'):
+                s = uri_to_string(link).split('Categorie:')[1]
                 # Crude stop word filtering. Use list instead?
-                keywords += [normalize(k) for k in
-                        uri_to_string(link).split()[1:] if len(k) >= 5]
+                keywords += [k for k in normalize(s).split() if len(k) >= 5]
         keywords = list(set(keywords))
         for k in pref_label.split():
             if k in keywords:
@@ -368,6 +369,6 @@ def get_document(uri=None):
     return document
 
 if __name__ == "__main__":
-    result = get_document('http://nl.dbpedia.org/resource/Princeton_(New_Jersey)')
+    result = get_document('http://nl.dbpedia.org/resource/Jay_Tromp')
     pprint.pprint(result)
 
