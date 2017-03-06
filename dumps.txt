@@ -18,3 +18,5 @@ mappingbased_objects_en.ttl
 mappingbased_objects_nl.ttl
 short_abstracts_en.ttl
 short_abstracts_nl.ttl
+long_abstracts_en.ttl
+long_abstracts_nl.ttl
