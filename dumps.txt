@@ -6,6 +6,8 @@ page_links_en.ttl
 page_links_nl.ttl
 redirects_en.ttl
 redirects_nl.ttl
+disambiguations_en.ttl
+disambiguations_nl.ttl
 instance_types_en.ttl
 instance_types_nl.ttl
 instance_types_transitive_en.ttl
