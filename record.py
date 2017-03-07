@@ -72,7 +72,8 @@ def get_prop(uri, prop, subject=True):
     payload = {'default-graph-uri': DEFAULT_GRAPH_URI, 'format': FORMAT,
             'query': query}
     response = requests.get(VIRTUOSO_URL, params=payload)
-    root = ET.fromstring(response.text)
+    s = re.sub('&#([0-9]+);', '', response.text)
+    root = ET.fromstring(s)
 
     values = []
     for result in root[1]:
@@ -96,7 +97,8 @@ def get_record(uri):
     payload = {'default-graph-uri': DEFAULT_GRAPH_URI, 'format': FORMAT,
             'query': query}
     response = requests.get(VIRTUOSO_URL, params=payload)
-    root = ET.fromstring(response.text)
+    s = re.sub('&#([0-9]+);', '', response.text)
+    root = ET.fromstring(s)
 
     record = {}
     for result in root[1]:
@@ -383,6 +385,6 @@ def get_document(uri=None):
     return document
 
 if __name__ == "__main__":
-    result = get_document('http://nl.dbpedia.org/resource/Albert_Einstein')
+    result = get_document('http://dbpedia.org/resource/Balchik_Ridge')
     pprint.pprint(result)
 
