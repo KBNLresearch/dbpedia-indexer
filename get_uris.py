@@ -32,30 +32,40 @@ def get_uris(lang='nl'):
     if lang == 'nl':
         query = '''
         SELECT DISTINCT ?s WHERE {
-            ?s <http://www.w3.org/2000/01/rdf-schema#comment> ?o .
-            ?s <http://www.w3.org/2000/01/rdf-schema#label> ?q .
+            ?s <http://www.w3.org/2000/01/rdf-schema#label> ?o .
+            { ?s <http://www.w3.org/2000/01/rdf-schema#comment> ?q . }
+            UNION
+            { ?s <http://dbpedia.org/ontology/abstract> ?r . }
             FILTER(
-                REGEX(?s, "^http://nl.dbpedia.org/resource/.{2,}", "i") &&
-                !REGEX(?s, "(doorverwijspagina)", "i")
+                REGEX(?s, "^http://nl.dbpedia.org/resource/.{2,}", "i")
             )
+            MINUS {
+                ?s <http://dbpedia.org/ontology/wikiPageDisambiguates> ?t .
+            }
+            MINUS {
+                ?s <http://dbpedia.org/ontology/wikiPageRedirects> ?u .
+            }
         }
         '''
     else:
         query = '''
         SELECT DISTINCT ?s WHERE {
-            ?s <http://www.w3.org/2000/01/rdf-schema#comment> ?o .
-            ?s <http://www.w3.org/2000/01/rdf-schema#label> ?r .
+            ?s <http://www.w3.org/2000/01/rdf-schema#label> ?o .
+            { ?s <http://www.w3.org/2000/01/rdf-schema#comment> ?q . }
+            UNION
+            { ?s <http://dbpedia.org/ontology/abstract> ?r . }
             FILTER(
-                REGEX(?s, "http://dbpedia.org/resource/.{2,}", "i") &&
-                !REGEX(?s, "(disambiguation)", "i")
+                REGEX(?s, "http://dbpedia.org/resource/.{2,}", "i")
             )
             MINUS {
+                ?s <http://dbpedia.org/ontology/wikiPageDisambiguates> ?u .
+            }
+            MINUS {
+                ?s <http://dbpedia.org/ontology/wikiPageRedirects> ?v .
+            }
+            MINUS {
                 ?t <http://www.w3.org/2002/07/owl#sameAs> ?s .
-                ?t <http://www.w3.org/2000/01/rdf-schema#comment> ?q .
-                ?t <http://www.w3.org/2000/01/rdf-schema#label> ?u .
-                FILTER(
-                    REGEX(?t, "^http://nl.dbpedia.org/resource/.{2,}", "i")
-                )
+                ?t <http://www.w3.org/2000/01/rdf-schema#label> ?w .
             }
         }
         '''
