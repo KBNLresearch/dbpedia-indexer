@@ -36,11 +36,12 @@ VIRTUOSO_URL = 'http://openvirtuoso.kbresearch.nl/sparql?'
 DEFAULT_GRAPH_URI = 'http://nl.dbpedia.org'
 FORMAT = 'xml'
 
-PROP_ABSTRACT = 'http://www.w3.org/2000/01/rdf-schema#comment'
+PROP_ABSTRACT = 'http://dbpedia.org/ontology/abstract'
 PROP_ALIAS = 'http://dbpedia.org/ontology/alias'
 PROP_BIRTH_DATE = 'http://dbpedia.org/ontology/birthDate'
 PROP_BIRTH_NAME = 'http://dbpedia.org/ontology/birthName'
 PROP_BIRTH_PLACE = 'http://dbpedia.org/ontology/birthPlace'
+PROP_COMMENT = 'http://www.w3.org/2000/01/rdf-schema#comment'
 PROP_DEATH_DATE = 'http://dbpedia.org/ontology/deathDate'
 PROP_DEATH_PLACE = 'http://dbpedia.org/ontology/deathPlace'
 PROP_GIVEN_NAME = 'http://xmlns.com/foaf/0.1/givenName'
@@ -113,6 +114,24 @@ def get_record(uri):
     inlinks = len(get_prop(uri, PROP_LINK, False))
     record['inlinks'] = [inlinks]
 
+    record = collapse(record, [PROP_ABSTRACT, PROP_COMMENT])
+    record = collapse(record, [PROP_NAME, PROP_BIRTH_NAME, PROP_GIVEN_NAME,
+            PROP_LONG_NAME, PROP_ALIAS, PROP_NICK_NAME])
+
+    return record
+
+def collapse(record, fields):
+    '''
+    Collapse a list of fields onto the first one.
+    '''
+    if fields[0] not in record:
+        record[fields[0]] = []
+    for f in fields[1:]:
+        if f in record:
+            record[fields[0]] += record[f]
+    for f in fields[1:]:
+        if f in record:
+            del record[f]
     return record
 
 def merge(records):
@@ -234,13 +253,8 @@ def transform(record, uri):
     # Normalized alt labels extracted form various name fields as well as
     # redirects
     alt_label = []
-
     cand = record[PROP_LABEL][1:]
-    props = [PROP_NAME, PROP_BIRTH_NAME, PROP_GIVEN_NAME,
-        PROP_LONG_NAME, PROP_ALIAS, PROP_NICK_NAME]
-    for p in props:
-        if p in record:
-            cand += record[p]
+    cand += record[PROP_NAME]
     if PROP_REDIRECT in record:
         cand += [uri_to_string(u) for u in record[PROP_REDIRECT] if
             u.startswith(uri[:10])]
@@ -369,6 +383,6 @@ def get_document(uri=None):
     return document
 
 if __name__ == "__main__":
-    result = get_document('http://nl.dbpedia.org/resource/Jay_Tromp')
+    result = get_document('http://nl.dbpedia.org/resource/Albert_Einstein')
     pprint.pprint(result)
 
