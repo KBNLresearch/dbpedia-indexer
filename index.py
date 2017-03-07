@@ -41,7 +41,7 @@ def skip(i, uri, msg):
         fh.write(uri.encode('utf-8') + (' ' + str(i) + ' ' + msg +
             '\n').encode('utf-8'))
 
-def index_list(f):
+def index_list(f, start=0):
     '''
     Retrieve document for each URI on the list and send it to Solr.
     '''
@@ -52,6 +52,8 @@ def index_list(f):
             i += 1
             if i % 10 == 0:
                 print('Processing record:' + str(i))
+            if i < start:
+                continue
             # Commit after every 100 requests
             if i % 100 == 0:
                 r = requests.get(SOLR_UPDATE_URL + '?commit=true')
@@ -91,6 +93,6 @@ def index_list(f):
     print(r.text)
 
 if __name__ == "__main__":
-    index_list('uris_nl.txt')
-    index_list('uris_en.txt')
+    index_list('uris_nl.txt', start=50000)
+    index_list('uris_en.txt', start=0)
 
