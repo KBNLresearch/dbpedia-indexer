@@ -214,6 +214,7 @@ def get_last_name(s):
         if re.match(pattern, part, flags=re.IGNORECASE):
             continue
         last_name = part
+        break
 
     return last_name
 
