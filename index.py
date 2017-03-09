@@ -93,6 +93,6 @@ def index_list(f, start=0):
     print(r.text)
 
 if __name__ == "__main__":
-    index_list('uris_nl.txt', start=50000)
+    index_list('uris_nl.txt', start=0)
     index_list('uris_en.txt', start=0)
 

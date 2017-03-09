@@ -22,7 +22,9 @@
 import pprint
 import re
 import requests
+import sys
 import urllib
+import utilities
 
 import xml.etree.ElementTree as ET
 
@@ -77,7 +79,8 @@ def get_prop(uri, prop, subject=True):
 
     values = []
     for result in root[1]:
-        values.append(result[0][0].text)
+        if result[0][0].text:
+            values.append(result[0][0].text)
 
     return values
 
@@ -89,7 +92,7 @@ def get_record(uri):
     SELECT ?p ?o WHERE {
         <%(uri)s> ?p ?o .
         FILTER(isLiteral(?o) || regex(?o, 'http://dbpedia.org') ||
-            regex(?o, 'http://nl.dbpedia.org')||regex(?o, 'http://schema.org'))
+            regex(?o, 'http://nl.dbpedia.org') || regex(?o, 'http://schema.org'))
     }
     ''' % {'uri': uri}
     query = ' '.join(query.split())
@@ -104,10 +107,11 @@ def get_record(uri):
     for result in root[1]:
         key = result[0][0].text
         value = result[1][0].text
-        if key in record:
-            record[key].append(value)
-        else:
-            record[key] = [value]
+        if value:
+            if key in record:
+                record[key].append(value)
+            else:
+                record[key] = [value]
 
     redirects = get_prop(uri, PROP_REDIRECT, False)
     if redirects:
@@ -149,19 +153,6 @@ def merge(records):
                 new_record[key] = value
     return new_record
 
-def normalize(s):
-    '''
-    Normalize string by removing punctuation, capitalization, diacritics.
-    '''
-    chars = ['/', '.', ',', ':', '?', '!', ';', '-', '\u2013']
-    for c in chars:
-        s = s.replace(c, ' ')
-    s = s.replace("'", '')
-    s = unidecode(s)
-    s = s.lower()
-    s = ' '.join(s.split())
-    return s
-
 def remove_spec(s):
     '''
     Remove the specification between brackets, if any, from a string.
@@ -189,35 +180,6 @@ def uri_to_string(uri, spec=False):
 
     return s
 
-def get_last_name(s):
-    '''
-    Extract probable last name from a string, excluding numbers, Roman numerals
-    and some well-known suffixes.
-    '''
-    last_name = None
-
-    # Some suffixes that shouldn't qualify as last names
-    suffixes = ['jr', 'sr', 'z', 'zn', 'fils']
-
-    # Regex to match Roman numerals
-    pattern = '^M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$'
-
-    parts = s.split()
-
-    for part in reversed(parts):
-        if parts.index(part) == 0:
-            continue
-        if part.isdigit():
-            continue
-        if part in suffixes:
-            continue
-        if re.match(pattern, part, flags=re.IGNORECASE):
-            continue
-        last_name = part
-        break
-
-    return last_name
-
 def transform(record, uri):
     '''
     Extract the relevant data and return a Solr document dict.
@@ -243,42 +205,43 @@ def transform(record, uri):
     # save the specification
     if '_(' in uri and ')' in uri:
         document['ambig'] = 1
-        document['spec'] = normalize(uri_to_string(uri, True))
+        document['spec'] = utilities.normalize(uri_to_string(uri, True))
     else:
         document['ambig'] = 0
 
     # Normalized pref label, based on the label without specification
     # between brackets
-    pref_label = normalize(remove_spec(document['label']))
+    pref_label = utilities.normalize(remove_spec(document['label']))
     document['pref_label'] = pref_label
     document['pref_label_str'] = pref_label
 
     # Normalized alt labels extracted form various name fields as well as
     # redirects
-    alt_label = []
     cand = record[PROP_LABEL][1:]
     cand += record[PROP_NAME]
     if PROP_REDIRECT in record:
         cand += [uri_to_string(u) for u in record[PROP_REDIRECT] if
             u.startswith(uri[:10])]
 
+    # Exclude some unwanted candidates
+    unwanted = ['/', '|']
+    for s in unwanted:
+        for c in cand[:]:
+            if c and c.find(s) > -1:
+                cand.remove(c)
+
     # Exclude alt labels identical to the pref label
+    alt_label = []
     for l in cand:
-        l_norm = normalize(remove_spec(l))
-        if l_norm != pref_label:
+        l_norm = utilities.normalize(remove_spec(l))
+        if l_norm and l_norm != pref_label:
             if l_norm not in alt_label:
                 alt_label.append(l_norm)
 
-    # Exclude alt labels that contain only words from the pref label
+    # Exclude alt labels that contain the same words as the pref label
     for l in alt_label[:]:
         if len(set(l.split()) & set(pref_label.split())) == len(l.split()):
-            alt_label.remove(l)
-
-    # Exclude other unwanted alt labels
-    unwanted = ['/', '|']
-    for s in unwanted:
-        for l in alt_label[:]:
-            if l.find(s) > -1:
+            if len(pref_label.split()) == len(l.split()):
                 alt_label.remove(l)
 
     document['alt_label'] = alt_label
@@ -293,7 +256,7 @@ def transform(record, uri):
             if link.startswith('http://nl.dbpedia.org/resource/Categorie:'):
                 s = uri_to_string(link).split('Categorie:')[1]
                 # Crude stop word filtering. Use list instead?
-                keywords += [k for k in normalize(s).split() if len(k) >= 5]
+                keywords += [k for k in utilities.normalize(s).split() if len(k) >= 5]
         keywords = list(set(keywords))
         for k in pref_label.split():
             if k in keywords:
@@ -304,14 +267,14 @@ def transform(record, uri):
     if PROP_TYPE in record:
         document['dbo_type'] = list(set([t.split('/')[-1] for t in
             record[PROP_TYPE] if t.startswith('http://dbpedia.org/ontology/')
-            and t.find('Wikidata:') < 0 and t.find('>') < 0]))
+            and t.find('Wikidata:') < 0 and t.find('%') < 0]))
         document['schema_type'] = list(set([t.split('/')[-1] for t in
             record[PROP_TYPE] if t.startswith('http://schema.org/')]))
 
     # Probable last name, for persons only
     if (('dbo_type' in document and 'Person' in document['dbo_type']) or
             ('schema_type' in document and 'Person' in document['schema_type'])):
-        last_name = get_last_name(pref_label)
+        last_name = utilities.get_last_name(pref_label)
         if last_name:
             document['last_part'] = last_name
             document['last_part_str'] = last_name
@@ -340,18 +303,18 @@ def transform(record, uri):
 
     # Birth and death places, giving preference to Dutch options
     if PROP_BIRTH_PLACE in record:
-        places = [normalize(uri_to_string(p)) for p in record[PROP_BIRTH_PLACE]
+        places = [utilities.normalize(uri_to_string(p)) for p in record[PROP_BIRTH_PLACE]
             if p.startswith('http://nl.dbpedia.org/resource/')]
         if not places:
-            places = [normalize(uri_to_string(p)) for p in record[PROP_BIRTH_PLACE]
+            places = [utilities.normalize(uri_to_string(p)) for p in record[PROP_BIRTH_PLACE]
                 if p.startswith('http://dbpedia.org/resource/')]
         document['birth_place'] = list(set(places))
 
     if PROP_DEATH_PLACE in record:
-        places = [normalize(uri_to_string(p)) for p in record[PROP_DEATH_PLACE]
+        places = [utilities.normalize(uri_to_string(p)) for p in record[PROP_DEATH_PLACE]
             if p.startswith('http://nl.dbpedia.org/resource/')]
         if not places:
-            places = [normalize(uri_to_string(p)) for p in record[PROP_DEATH_PLACE]
+            places = [utilities.normalize(uri_to_string(p)) for p in record[PROP_DEATH_PLACE]
                 if p.startswith('http://dbpedia.org/resource/')]
         document['death_place'] = list(set(places))
 
@@ -386,6 +349,10 @@ def get_document(uri=None):
     return document
 
 if __name__ == "__main__":
-    result = get_document('http://dbpedia.org/resource/Balchik_Ridge')
+    if len(sys.argv) > 1:
+        print(sys.argv)
+        result = get_document(sys.argv[1])
+    else:
+        result = get_document('http://nl.dbpedia.org/resource/Roger_Bacon')
     pprint.pprint(result)
 
