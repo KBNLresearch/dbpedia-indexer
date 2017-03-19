@@ -273,10 +273,10 @@ def transform(record, uri):
     # Probable last name, for persons only
     if (('dbo_type' in document and 'Person' in document['dbo_type']) or
             ('schema_type' in document and 'Person' in document['schema_type'])):
-        last_name = utilities.get_last_name(pref_label, exclude_first_part=True)
-        if last_name:
-            document['last_part'] = last_name
-            document['last_part_str'] = last_name
+        last_part = utilities.get_last_part(pref_label, exclude_first_part=True)
+        if last_part:
+            document['last_part'] = last_part
+            document['last_part_str'] = last_part
 
     # Birth and death dates, taking the minimum of multiple birth date options
     # and the maximum of multiple death dates
