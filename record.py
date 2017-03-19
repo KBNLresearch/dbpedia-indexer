@@ -220,8 +220,7 @@ def transform(record, uri):
     cand = record[PROP_LABEL][1:]
     cand += record[PROP_NAME]
     if PROP_REDIRECT in record:
-        cand += [uri_to_string(u) for u in record[PROP_REDIRECT] if
-            u.startswith(uri[:10])]
+        cand += [uri_to_string(u) for u in record[PROP_REDIRECT]]
 
     # Exclude some unwanted candidates
     unwanted = ['/', '|']
@@ -350,7 +349,6 @@ def get_document(uri=None):
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
-        print(sys.argv)
         result = get_document(sys.argv[1])
     else:
         result = get_document('http://nl.dbpedia.org/resource/Roger_Bacon')
