@@ -27,7 +27,8 @@ import time
 
 LOG = 'log.txt'
 
-SOLR_UPDATE_URL = 'http://sara-backup:8082/solr/dbpedia/update'
+SOLR_UPDATE_URL = 'http://linksolr1.kbresearch.nl/dbpedia/update'
+
 SOLR_JSON_URL = SOLR_UPDATE_URL + '/json/docs'
 
 headers = {'Content-Type': 'application/json'}
@@ -93,6 +94,7 @@ def index_list(f, start=0):
     print(r.text)
 
 if __name__ == "__main__":
-    index_list('uris_nl.txt', start=0)
-    index_list('uris_en.txt', start=0)
+    index_list('fix_hangul.txt', start=0)
+    #index_list('uris_nl.txt', start=0)
+    #index_list('uris_en.txt', start=0)
 
