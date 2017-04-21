@@ -220,7 +220,13 @@ def transform(record, uri):
     cand = record[PROP_LABEL][1:]
     cand += record[PROP_NAME]
     if PROP_REDIRECT in record:
-        cand += [uri_to_string(u) for u in record[PROP_REDIRECT]]
+        # Exclude English redirects if there are too many
+        if len([u for u in record[PROP_REDIRECT] if
+                u.startswith('http://dbpedia.org/resource/')]) > 20:
+            cand += [uri_to_string(u) for u in record[PROP_REDIRECT] if
+                u.startswith('http://nl.dbpedia.org/resource/')]
+        else:
+            cand += [uri_to_string(u) for u in record[PROP_REDIRECT]]
 
     # Exclude some unwanted candidates
     unwanted = ['/', '|']
