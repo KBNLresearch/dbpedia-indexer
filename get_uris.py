@@ -37,7 +37,10 @@ def get_uris(lang='nl'):
             UNION
             { ?s <http://dbpedia.org/ontology/abstract> ?r . }
             FILTER(
-                REGEX(?s, "^http://nl.dbpedia.org/resource/.{2,}", "i")
+                regex(?s, "^http://nl.dbpedia.org/resource/.{2,}", "i")
+            )
+            FILTER(
+                !regex(?s, "^http://nl.dbpedia.org/resource/Lijst_van_", "i")
             )
             MINUS {
                 ?s <http://dbpedia.org/ontology/wikiPageDisambiguates> ?t .
@@ -55,7 +58,10 @@ def get_uris(lang='nl'):
             UNION
             { ?s <http://dbpedia.org/ontology/abstract> ?r . }
             FILTER(
-                REGEX(?s, "http://dbpedia.org/resource/.{2,}", "i")
+                regex(?s, "http://dbpedia.org/resource/.{2,}", "i")
+            )
+            FILTER(
+                !regex(?s, "^http://dbpedia.org/resource/List_of_", "i")
             )
             MINUS {
                 ?s <http://dbpedia.org/ontology/wikiPageDisambiguates> ?u .

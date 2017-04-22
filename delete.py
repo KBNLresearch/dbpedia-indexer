@@ -23,7 +23,7 @@ import json
 import requests
 import time
 
-SOLR_UPDATE_URL = 'http://sara-backup:8082/solr/dbpedia/update'
+SOLR_UPDATE_URL = 'http://linksolr1.kbresearch.nl/dbpedia/update'
 
 headers = {'Content-Type': 'application/json'}
 
@@ -62,6 +62,6 @@ def delete_list(new_f, old_f):
     print(r.text)
 
 if __name__ == "__main__":
-    delete_list('uris_nl.txt', 'uris_nl.txt.old')
-    delete_list('uris_en.txt', 'uris_en.txt.old')
+    delete_list('uris_nl.txt', 'uris_nl_old.txt')
+    delete_list('uris_en.txt', 'uris_en_old.txt')
 
