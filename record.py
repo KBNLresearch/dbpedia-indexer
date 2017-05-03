@@ -91,8 +91,9 @@ def get_record(uri):
     query = '''
     SELECT ?p ?o WHERE {
         <%(uri)s> ?p ?o .
-        FILTER(isLiteral(?o) || regex(?o, 'http://dbpedia.org') ||
-            regex(?o, 'http://nl.dbpedia.org') || regex(?o, 'http://schema.org'))
+        FILTER(isLiteral(?o) || regex(?o, 'http://dbpedia.org') || regex(?o,
+        'http://www.wikidata.org/entity') || regex(?o, 'http://nl.dbpedia.org')
+        || regex(?o, 'http://schema.org'))
     }
     ''' % {'uri': uri}
     query = ' '.join(query.split())
