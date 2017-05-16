@@ -46,6 +46,7 @@ PROP_BIRTH_PLACE = 'http://dbpedia.org/ontology/birthPlace'
 PROP_COMMENT = 'http://www.w3.org/2000/01/rdf-schema#comment'
 PROP_DEATH_DATE = 'http://dbpedia.org/ontology/deathDate'
 PROP_DEATH_PLACE = 'http://dbpedia.org/ontology/deathPlace'
+PROP_DISAMBIGUATES = 'http://dbpedia.org/ontology/wikiPageDisambiguates'
 PROP_GIVEN_NAME = 'http://xmlns.com/foaf/0.1/givenName'
 PROP_LABEL = 'http://www.w3.org/2000/01/rdf-schema#label'
 PROP_LINK = 'http://dbpedia.org/ontology/wikiPageWikiLink'
@@ -118,6 +119,10 @@ def get_record(uri):
     if redirects:
         record[PROP_REDIRECT] = redirects
 
+    disambiguations = get_prop(uri, PROP_DISAMBIGUATES, False)
+    if disambiguations:
+        record[PROP_DISAMBIGUATES] = disambiguations
+
     inlinks = len(get_prop(uri, PROP_LINK, False))
     record['inlinks'] = [inlinks]
 
@@ -187,8 +192,22 @@ def transform(record, uri):
     '''
     document = {}
 
-    # The DBpedia URI as document id
+    # The main DBpedia URI as document id
     document['id'] = uri
+
+    # Other language, Wikidata uris
+    if uri.startswith('http://nl.'):
+        document['uri_nl'] = uri
+    else:
+        document['uri_en'] = uri
+
+    if PROP_SAME_AS in record:
+        for u in record[PROP_SAME_AS]:
+            if uri.startswith('http://nl.'):
+                if u.startswith('http://dbpedia.org/resource/'):
+                    document['uri_en'] = u
+            if u.startswith('http://www.wikidata.org/entity/'):
+                document['uri_wd'] = u
 
     # The first (i.e. Dutch if available) label
     document['label'] = record[PROP_LABEL][0]
@@ -223,11 +242,18 @@ def transform(record, uri):
     if PROP_REDIRECT in record:
         # Exclude English redirects if there are too many
         if len([u for u in record[PROP_REDIRECT] if
-                u.startswith('http://dbpedia.org/resource/')]) > 20:
+                u.startswith('http://dbpedia.org/resource/')]) > 100:
             cand += [uri_to_string(u) for u in record[PROP_REDIRECT] if
                 u.startswith('http://nl.dbpedia.org/resource/')]
         else:
             cand += [uri_to_string(u) for u in record[PROP_REDIRECT]]
+
+    # Include disambiguations for acronyms
+    if PROP_DISAMBIGUATES in record:
+        for u in record[PROP_DISAMBIGUATES]:
+            s = uri_to_string(u)
+            if len(s) >= 2 and len(s) <=5 and s.isupper():
+                cand.append(s)
 
     # Exclude some unwanted candidates
     unwanted = ['/', '|']
@@ -236,7 +262,7 @@ def transform(record, uri):
             if c and c.find(s) > -1:
                 cand.remove(c)
 
-    # Exclude alt labels identical to the pref label
+    # Exclude identical alt labels and alt labels identical to the pref label
     alt_label = []
     for l in cand:
         l_norm = utilities.normalize(remove_spec(l))
@@ -358,6 +384,6 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         result = get_document(sys.argv[1])
     else:
-        result = get_document('http://nl.dbpedia.org/resource/Roger_Bacon')
+        result = get_document('http://nl.dbpedia.org/resource/Albert_Einstein')
     pprint.pprint(result)
 
