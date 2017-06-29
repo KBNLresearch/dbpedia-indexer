@@ -57,6 +57,8 @@ PROP_REDIRECT = 'http://dbpedia.org/ontology/wikiPageRedirects'
 PROP_SAME_AS = 'http://www.w3.org/2002/07/owl#sameAs'
 PROP_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'
 
+WD_URL = 'https://www.wikidata.org/wiki/Special:EntityData/{}.json'
+
 application = default_app()
 
 def get_prop(uri, prop, subject=True):
@@ -186,6 +188,30 @@ def uri_to_string(uri, spec=False):
 
     return s
 
+def get_wd_aliases(wd_uri):
+    '''
+    Get additional alternative names form Wikidata web service.
+    '''
+    wd_id = wd_uri.split('/')[-1]
+    url = WD_URL.format(wd_id)
+
+    for i in range(3):
+        try:
+            response = requests.get(url, timeout=60)
+            data = response.json()
+            break
+        except:
+            continue
+
+    if data:
+        alias_dict = data.get('entities').get(wd_id).get('aliases')
+        if isinstance(alias_dict, dict):
+            aliases_nl = alias_dict.get('nl')
+            if aliases_nl:
+                aliases = [a.get('value') for a in aliases_nl]
+                return aliases
+    return []
+
 def transform(record, uri):
     '''
     Extract the relevant data and return a Solr document dict.
@@ -247,6 +273,10 @@ def transform(record, uri):
                 u.startswith('http://nl.dbpedia.org/resource/')]
         else:
             cand += [uri_to_string(u) for u in record[PROP_REDIRECT]]
+
+    # Include Wikidata aliases
+    if document.get('uri_wd'):
+        cand += get_wd_aliases(document.get('uri_wd'))
 
     # Include disambiguations for acronyms
     if PROP_DISAMBIGUATES in record:

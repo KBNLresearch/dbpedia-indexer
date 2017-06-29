@@ -49,12 +49,14 @@ def index_list(f, start=0):
     with open(f, 'rb') as fh:
         i = 0
         for uri in fh:
+
             # Keep a counter
             i += 1
             if i % 10 == 0:
                 print('Processing record:' + str(i))
             if i < start:
                 continue
+
             # Commit after every 100 requests
             if i % 100 == 0:
                 r = requests.get(SOLR_UPDATE_URL + '?commit=true')
