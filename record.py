@@ -163,7 +163,7 @@ def remove_spec(s):
     '''
     Remove the specification between brackets, if any, from a string.
     '''
-    if ' (' in s and ')' in s:
+    if ' (' in s and s.endswith(')'):
         s = s.split(' (')[0]
     return s
 
@@ -175,9 +175,9 @@ def uri_to_string(uri, spec=False):
     s = uri.split('/resource/')[-1]
     s = s.replace('_', ' ')
 
-    if ' (' in s and ')' in s:
+    if ' (' in s and s.endswith(')'):
         if spec:
-            s = s.split(' (')[1].split(')')[0]
+            s = s.split(' (')[1][:-1]
         else:
             s = s.split(' (')[0]
     elif spec:
@@ -223,7 +223,7 @@ def transform(record, uri):
 
     # Set ambiguity flag if specification between brackets present in URI and
     # save the specification
-    if '_(' in uri and ')' in uri:
+    if '_(' in uri and uri.endswith(')'):
         document['ambig'] = 1
         document['spec'] = utilities.normalize(uri_to_string(uri, True))
     else:
