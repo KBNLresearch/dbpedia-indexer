@@ -53,7 +53,7 @@ def index_list(f, start=0):
             # Keep a counter
             i += 1
             if i % 10 == 0:
-                print('Processing record:' + str(i))
+                print('Processing file {}, record {}'.format(f, i))
             if i < start:
                 continue
 
@@ -96,6 +96,7 @@ def index_list(f, start=0):
     print(r.text)
 
 if __name__ == "__main__":
-    index_list('uris_nl.txt', start=0)
+    #index_list('log-old.txt', start=0)
+    index_list('uris_nl.txt', start=1075400)
     index_list('uris_en.txt', start=0)
 

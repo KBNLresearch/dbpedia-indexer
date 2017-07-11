@@ -194,23 +194,16 @@ def get_wd_aliases(wd_uri):
     '''
     wd_id = wd_uri.split('/')[-1]
     url = WD_URL.format(wd_id)
-
-    for i in range(3):
-        try:
-            response = requests.get(url, timeout=60)
-            data = response.json()
-            break
-        except:
-            continue
-
-    if data:
-        alias_dict = data.get('entities').get(wd_id).get('aliases')
-        if isinstance(alias_dict, dict):
-            aliases_nl = alias_dict.get('nl')
-            if aliases_nl:
-                aliases = [a.get('value') for a in aliases_nl]
-                return aliases
-    return []
+    try:
+        response = requests.get(url, timeout=10)
+        data = response.json()
+    except:
+        return []
+    try:
+        alias_dict = data.get('entities').get(wd_id).get('aliases').get('nl')
+        return [a.get('value') for a in alias_dict]
+    except:
+        return []
 
 def transform(record, uri):
     '''
