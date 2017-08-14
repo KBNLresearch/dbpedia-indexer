@@ -373,7 +373,22 @@ def transform(record, uri):
                 if p.startswith('http://dbpedia.org/resource/')]
         document['death_place'] = list(set(places))
 
+    # Number of times label appears in newspaper index
+    document['inlinks_newspapers'] = ddd_jsru(pref_label)
+
     return document
+
+def ddd_jsru(preflabel):
+    JSRU = 'http://jsru.kb.nl/sru/'
+    JSRU += 'sru?x-collection=DDD_artikel&recordSchema=dcx&query='
+    JSRU += 'cql.serverChoice exact "%s"&maximumRecords=0'
+
+    jsru = requests.get(JSRU % preflabel)
+    jsru_data = ET.fromstring(jsru.text)
+
+    for item in jsru_data.iter():
+        if item.tag.endswith('numberOfRecords'):
+            return(item.text)
 
 @route('/')
 def get_document(uri=None):

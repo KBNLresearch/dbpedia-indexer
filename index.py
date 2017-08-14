@@ -97,6 +97,6 @@ def index_list(f, start=0):
 
 if __name__ == "__main__":
     #index_list('log-old.txt', start=0)
-    index_list('uris_nl.txt', start=1075400)
-    index_list('uris_en.txt', start=0)
+    #index_list('uris_nl.txt', start=1075400)
+    index_list('uris_en.txt', start=2400000)
 
