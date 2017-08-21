@@ -23,15 +23,12 @@ import json
 import os
 import record
 import requests
+import sys
 import time
 
-LOG = 'log.txt'
-
 SOLR_UPDATE_URL = 'http://linksolr1.kbresearch.nl/dbpedia/update'
-
 SOLR_JSON_URL = SOLR_UPDATE_URL + '/json/docs'
-
-headers = {'Content-Type': 'application/json'}
+LOG = 'log.txt'
 
 def skip(i, uri, msg):
     '''
@@ -54,6 +51,8 @@ def index_list(f, start=0):
             i += 1
             if i % 10 == 0:
                 print('Processing file {}, record {}'.format(f, i))
+
+            # Start from a specific line number
             if i < start:
                 continue
 
@@ -62,9 +61,12 @@ def index_list(f, start=0):
                 r = requests.get(SOLR_UPDATE_URL + '?commit=true')
                 print('Committing changes...')
                 print(r.text)
+
+            # Get URI
             uri = uri.decode('utf-8')
             uri = uri.split()[0]
 
+            # Get the record data from record.py
             retries = 0
             payload = None
             while not payload and retries < 5:
@@ -80,13 +82,14 @@ def index_list(f, start=0):
                 skip(i, uri, 'VOS error')
                 continue
 
+            # Send the record data to Solr
             try:
-                response = requests.post(SOLR_JSON_URL, data=payload, headers=headers)
+                response = requests.post(SOLR_JSON_URL, data=payload,
+                    headers={'Content-Type': 'application/json'}, timeout=60)
                 #print(response.text)
                 response = response.json()
                 status = response['responseHeader']['status']
-                if status != 0:
-                    raise
+                assert status == 0
             except:
                 skip(i, uri, 'SOLR error')
 
@@ -95,8 +98,10 @@ def index_list(f, start=0):
     print('Committing changes...')
     print(r.text)
 
-if __name__ == "__main__":
-    #index_list('log-old.txt', start=0)
-    #index_list('uris_nl.txt', start=1075400)
-    index_list('uris_en.txt', start=2400000)
+if __name__ == '__main__':
+
+    fname = 'uris_nl.txt' if len(sys.argv) < 2 else sys.argv[1]
+    start = 0 if len(sys.argv) < 3 else int(sys.argv[2])
+
+    index_list(fname, start)
 
