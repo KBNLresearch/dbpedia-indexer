@@ -205,6 +205,21 @@ def get_wd_aliases(wd_uri):
     except:
         return []
 
+def ddd_jsru(preflabel):
+    '''
+    Count the number of times the label appears in the newspaper corpus.
+    '''
+    JSRU = 'http://jsru.kb.nl/sru/'
+    JSRU += 'sru?x-collection=DDD_artikel&recordSchema=dcx&query='
+    JSRU += 'cql.serverChoice exact "%s"&maximumRecords=0'
+
+    jsru = requests.get(JSRU % preflabel)
+    jsru_data = ET.fromstring(jsru.text)
+
+    for item in jsru_data.iter():
+        if item.tag.endswith('numberOfRecords'):
+            return(item.text)
+
 def transform(record, uri):
     '''
     Extract the relevant data and return a Solr document dict.
@@ -231,14 +246,26 @@ def transform(record, uri):
     # The first (i.e. Dutch if available) label
     document['label'] = record[PROP_LABEL][0]
 
+    # Normalized pref label, based on the label without specification
+    # between brackets
+    pref_label = utilities.normalize(remove_spec(document['label']))
+    document['pref_label'] = pref_label
+    document['pref_label_str'] = pref_label
+
     # The first (i.e. Dutch if available) abstract
     document['abstract'] = record[PROP_ABSTRACT][0]
 
     # Language of the (primary) resource description
     document['lang'] = 'nl' if uri.startswith('http://nl.') else 'en'
 
-    # Number of inlinks, the max of Dutch and English counts
+    # Number of links and inlinks (max of Dutch and English counts)
+    if PROP_LINK in record:
+        document['links'] = len(record[PROP_LINK])
+
     document['inlinks'] = max(record['inlinks'])
+
+    # Number of times label appears in newspaper index
+    document['inlinks_newspapers'] = ddd_jsru(pref_label)
 
     # Set ambiguity flag if specification between brackets present in URI and
     # save the specification
@@ -247,12 +274,6 @@ def transform(record, uri):
         document['spec'] = utilities.normalize(uri_to_string(uri, True))
     else:
         document['ambig'] = 0
-
-    # Normalized pref label, based on the label without specification
-    # between brackets
-    pref_label = utilities.normalize(remove_spec(document['label']))
-    document['pref_label'] = pref_label
-    document['pref_label_str'] = pref_label
 
     # Normalized alt labels extracted form various name fields as well as
     # redirects
@@ -311,7 +332,8 @@ def transform(record, uri):
             if link.startswith('http://nl.dbpedia.org/resource/Categorie:'):
                 s = uri_to_string(link).split('Categorie:')[1]
                 # Crude stop word filtering. Use list instead?
-                keywords += [k for k in utilities.normalize(s).split() if len(k) >= 5]
+                keywords += [k for k in utilities.normalize(s).split() if
+                    len(k) >= 5]
         keywords = list(set(keywords))
         for k in pref_label.split():
             if k in keywords:
@@ -328,7 +350,7 @@ def transform(record, uri):
 
     # Probable last name, for persons only
     if (('dbo_type' in document and 'Person' in document['dbo_type']) or
-            ('schema_type' in document and 'Person' in document['schema_type'])):
+        ('schema_type' in document and 'Person' in document['schema_type'])):
         last_part = utilities.get_last_part(pref_label, exclude_first_part=True)
         if last_part:
             document['last_part'] = last_part
@@ -346,6 +368,7 @@ def transform(record, uri):
                 continue
         if cand:
             document['birth_year'] = min(cand)
+
     if PROP_DEATH_DATE in record:
         cand = []
         for date in record[PROP_DEATH_DATE]:
@@ -357,38 +380,27 @@ def transform(record, uri):
             document['death_year'] = max(cand)
 
     # Birth and death places, giving preference to Dutch options
+    nl_resource = 'http://nl.dbpedia.org/resource/'
+    en_resource = 'http://dbpedia.org/resource/'
+
     if PROP_BIRTH_PLACE in record:
-        places = [utilities.normalize(uri_to_string(p)) for p in record[PROP_BIRTH_PLACE]
-            if p.startswith('http://nl.dbpedia.org/resource/')]
+        places = [utilities.normalize(uri_to_string(p)) for p in
+            record[PROP_BIRTH_PLACE] if p.startswith(nl_resource)]
         if not places:
-            places = [utilities.normalize(uri_to_string(p)) for p in record[PROP_BIRTH_PLACE]
-                if p.startswith('http://dbpedia.org/resource/')]
+            places = [utilities.normalize(uri_to_string(p)) for p in
+                record[PROP_BIRTH_PLACE] if p.startswith(en_resource)]
         document['birth_place'] = list(set(places))
 
     if PROP_DEATH_PLACE in record:
-        places = [utilities.normalize(uri_to_string(p)) for p in record[PROP_DEATH_PLACE]
-            if p.startswith('http://nl.dbpedia.org/resource/')]
+        places = [utilities.normalize(uri_to_string(p)) for p in
+            record[PROP_DEATH_PLACE] if p.startswith(nl_resource)]
         if not places:
-            places = [utilities.normalize(uri_to_string(p)) for p in record[PROP_DEATH_PLACE]
-                if p.startswith('http://dbpedia.org/resource/')]
+            places = [utilities.normalize(uri_to_string(p)) for p in
+                record[PROP_DEATH_PLACE] if p.startswith(en_resource)]
         document['death_place'] = list(set(places))
-
-    # Number of times label appears in newspaper index
-    document['inlinks_newspapers'] = ddd_jsru(pref_label)
 
     return document
 
-def ddd_jsru(preflabel):
-    JSRU = 'http://jsru.kb.nl/sru/'
-    JSRU += 'sru?x-collection=DDD_artikel&recordSchema=dcx&query='
-    JSRU += 'cql.serverChoice exact "%s"&maximumRecords=0'
-
-    jsru = requests.get(JSRU % preflabel)
-    jsru_data = ET.fromstring(jsru.text)
-
-    for item in jsru_data.iter():
-        if item.tag.endswith('numberOfRecords'):
-            return(item.text)
 
 @route('/')
 def get_document(uri=None):
@@ -418,7 +430,8 @@ def get_document(uri=None):
     document = transform(record, uri)
     return document
 
-if __name__ == "__main__":
+
+if __name__ == '__main__':
     if len(sys.argv) > 1:
         result = get_document(sys.argv[1])
     else:
