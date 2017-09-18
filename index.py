@@ -39,7 +39,7 @@ def skip(i, uri, msg):
         fh.write(uri.encode('utf-8') + (' ' + str(i) + ' ' + msg +
             '\n').encode('utf-8'))
 
-def index_list(f, start=0):
+def index_list(f, start=0, stop=None):
     '''
     Retrieve document for each URI on the list and send it to Solr.
     '''
@@ -54,6 +54,8 @@ def index_list(f, start=0):
 
             # Start from a specific line number
             if i < start:
+                continue
+            if stop and i > stop:
                 continue
 
             # Commit after every 100 requests
@@ -102,6 +104,7 @@ if __name__ == '__main__':
 
     fname = 'uris_nl.txt' if len(sys.argv) < 2 else sys.argv[1]
     start = 0 if len(sys.argv) < 3 else int(sys.argv[2])
+    stop = None if len(sys.argv) < 4 else int(sys.argv[3])
 
-    index_list(fname, start)
+    index_list(fname, start, stop)
 
