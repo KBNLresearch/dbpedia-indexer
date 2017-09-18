@@ -260,7 +260,7 @@ def transform(record, uri):
 
     # Number of links and inlinks (max of Dutch and English counts)
     if PROP_LINK in record:
-        document['links'] = len(record[PROP_LINK])
+        document['outlinks'] = len(record[PROP_LINK])
 
     document['inlinks'] = max(record['inlinks'])
 
@@ -279,6 +279,7 @@ def transform(record, uri):
     # redirects
     cand = record[PROP_LABEL][1:]
     cand += record[PROP_NAME]
+
     if PROP_REDIRECT in record:
         # Exclude English redirects if there are too many
         if len([u for u in record[PROP_REDIRECT] if
@@ -288,10 +289,6 @@ def transform(record, uri):
         else:
             cand += [uri_to_string(u) for u in record[PROP_REDIRECT]]
 
-    # Include Wikidata aliases
-    if document.get('uri_wd'):
-        cand += get_wd_aliases(document.get('uri_wd'))
-
     # Include disambiguations for acronyms
     if PROP_DISAMBIGUATES in record:
         for u in record[PROP_DISAMBIGUATES]:
@@ -299,27 +296,16 @@ def transform(record, uri):
             if len(s) >= 2 and len(s) <=5 and s.isupper():
                 cand.append(s)
 
-    # Exclude some unwanted candidates
-    unwanted = ['/', '|']
-    for s in unwanted:
-        for c in cand[:]:
-            if c and c.find(s) > -1:
-                cand.remove(c)
+    # Include Wikidata aliases
+    if document.get('uri_wd'):
+        wd_cand = get_wd_aliases(document.get('uri_wd'))
+        cand += wd_cand
 
-    # Exclude identical alt labels and alt labels identical to the pref label
-    alt_label = []
-    for l in cand:
-        l_norm = utilities.normalize(remove_spec(l))
-        if l_norm and l_norm != pref_label:
-            if l_norm not in alt_label:
-                alt_label.append(l_norm)
+        wd_alt_label = clean_labels(wd_cand, pref_label)
+        document['wd_alt_label'] = wd_alt_label
+        document['wd_alt_label_str'] = wd_alt_label
 
-    # Exclude alt labels that contain the same words as the pref label
-    for l in alt_label[:]:
-        if len(set(l.split()) & set(pref_label.split())) == len(l.split()):
-            if len(pref_label.split()) == len(l.split()):
-                alt_label.remove(l)
-
+    alt_label = clean_labels(cand, pref_label)
     document['alt_label'] = alt_label
     document['alt_label_str'] = alt_label
 
@@ -401,6 +387,32 @@ def transform(record, uri):
 
     return document
 
+def clean_labels(cand, pref_label):
+
+    alt_label = []
+
+    # Exclude some unwanted candidates
+    unwanted = ['/', '|']
+    for s in unwanted:
+        for c in cand[:]:
+            if c and c.find(s) > -1:
+                cand.remove(c)
+
+    # Exclude identical alt labels and alt labels identical to the pref label
+    alt_label = []
+    for l in cand:
+        l_norm = utilities.normalize(remove_spec(l))
+        if l_norm and l_norm != pref_label:
+            if l_norm not in alt_label:
+                alt_label.append(l_norm)
+
+    # Exclude alt labels that contain the same words as the pref label
+    for l in alt_label[:]:
+        if len(set(l.split()) & set(pref_label.split())) == len(l.split()):
+            if len(pref_label.split()) == len(l.split()):
+                alt_label.remove(l)
+
+    return alt_label
 
 @route('/')
 def get_document(uri=None):
