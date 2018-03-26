@@ -19,22 +19,28 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+# Standard library imports
+import os
 import pprint
 import re
-import requests
 import sys
 import urllib
-import utilities
 
+# Third-party library imports
+import requests
 import xml.etree.ElementTree as ET
-
-from bottle import request
-from bottle import route
-from bottle import default_app
 
 from unidecode import unidecode
 
+# Import DAC modules
+sys.path.insert(0, os.path.join(os.path.dirname(
+    os.path.realpath(__file__)), '.'))
+import utilities
+
+
 VIRTUOSO_URL = 'http://openvirtuoso.kbresearch.nl/sparql?'
+WD_URL = 'https://www.wikidata.org/wiki/Special:EntityData/{}.json'
+
 DEFAULT_GRAPH_URI = 'http://nl.dbpedia.org'
 FORMAT = 'xml'
 
@@ -57,9 +63,6 @@ PROP_REDIRECT = 'http://dbpedia.org/ontology/wikiPageRedirects'
 PROP_SAME_AS = 'http://www.w3.org/2002/07/owl#sameAs'
 PROP_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'
 
-WD_URL = 'https://www.wikidata.org/wiki/Special:EntityData/{}.json'
-
-application = default_app()
 
 def get_prop(uri, prop, subject=True):
     '''
@@ -86,6 +89,7 @@ def get_prop(uri, prop, subject=True):
             values.append(result[0][0].text)
 
     return values
+
 
 def get_record(uri):
     '''
@@ -134,6 +138,7 @@ def get_record(uri):
 
     return record
 
+
 def collapse(record, fields):
     '''
     Collapse a list of fields onto the first one.
@@ -148,6 +153,7 @@ def collapse(record, fields):
             del record[f]
     return record
 
+
 def merge(records):
     '''
     Merge multiple records into one.
@@ -161,6 +167,7 @@ def merge(records):
                 new_record[key] = value
     return new_record
 
+
 def remove_spec(s):
     '''
     Remove the specification between brackets, if any, from a string.
@@ -168,6 +175,7 @@ def remove_spec(s):
     if ' (' in s and s.endswith(')'):
         s = s.split(' (')[0]
     return s
+
 
 def uri_to_string(uri, spec=False):
     '''
@@ -188,6 +196,7 @@ def uri_to_string(uri, spec=False):
 
     return s
 
+
 def get_wd_aliases(wd_uri):
     '''
     Get additional alternative names form Wikidata web service.
@@ -205,6 +214,7 @@ def get_wd_aliases(wd_uri):
     except:
         return []
 
+
 def ddd_jsru(preflabel):
     '''
     Count the number of times the label appears in the newspaper corpus.
@@ -219,6 +229,7 @@ def ddd_jsru(preflabel):
     for item in jsru_data.iter():
         if item.tag.endswith('numberOfRecords'):
             return(item.text)
+
 
 def transform(record, uri):
     '''
@@ -387,6 +398,7 @@ def transform(record, uri):
 
     return document
 
+
 def clean_labels(cand, pref_label):
 
     alt_label = []
@@ -414,14 +426,11 @@ def clean_labels(cand, pref_label):
 
     return alt_label
 
-@route('/')
+
 def get_document(uri=None):
     '''
     Retrieve and process all info about specified uri.
     '''
-    if not uri:
-        uri = request.query.get('uri')
-
     # Get original record
     records = []
     record = get_record(uri)
