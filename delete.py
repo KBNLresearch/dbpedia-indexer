@@ -19,18 +19,21 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+# Standard library imports
 import json
-import requests
 import time
+
+# Third-party library imports
+import requests
+
 
 SOLR_UPDATE_URL = 'http://linksolr1.kbresearch.nl/dbpedia/update'
 
-headers = {'Content-Type': 'application/json'}
 
 def delete_list(new_f, old_f):
     '''
-    Delete Solr document for each URI on the old list that is no longer present
-    on the new list.
+    Delete Solr document for each URI on the old list that is no longer
+    present on the new list.
     '''
     with open(new_f, 'rb') as fh:
         new_list = fh.read().decode('utf-8').split()
@@ -41,27 +44,22 @@ def delete_list(new_f, old_f):
         print(len(old_list))
 
     diff = list(set(old_list) - set(new_list))
-    print(len(diff))
-    print(diff[:10])
 
     for i, uri in enumerate(diff):
-        payload = json.dumps({'delete': uri}, ensure_ascii=False).encode('utf-8')
-        #print(payload)
-        response = requests.post(SOLR_UPDATE_URL, data=payload, headers=headers)
-        #print(response.text)
-        if i % 100 == 0:
-            print('Processed ' + str(i) + ' of ' + str(len(diff)))
+        payload = json.dumps({'delete': uri},
+                             ensure_ascii=False).encode('utf-8')
+        headers = {'Content-Type': 'application/json'}
+        response = requests.post(SOLR_UPDATE_URL, data=payload,
+                                 headers=headers)
+
+        if i % 100 == 0 or i == len(diff) - 1:
+            print('Processed {} of {}'.format(i, len(diff)))
             print('Committing changes...')
-            r = requests.get(SOLR_UPDATE_URL + '?commit=true')
-            print(r.text)
+            resp = requests.get(SOLR_UPDATE_URL + '?commit=true')
+            print(resp.text)
             time.sleep(1)
 
-    # Commit at end of file
-    print('Committing changes...')
-    r = requests.get(SOLR_UPDATE_URL + '?commit=true')
-    print(r.text)
 
 if __name__ == "__main__":
     delete_list('uris_nl.txt', 'uris_nl_old.txt')
     delete_list('uris_en.txt', 'uris_en_old.txt')
-

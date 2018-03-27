@@ -25,6 +25,7 @@ import requests
 VIRTUOSO_URL = 'http://openvirtuoso.kbresearch.nl/sparql?'
 DEFAULT_GRAPH_URI = 'http://nl.dbpedia.org'
 
+
 def get_uris(lang='nl'):
     '''
     Retrieve all relevant resource uris for specified language.
@@ -75,36 +76,48 @@ def get_uris(lang='nl'):
             }
         }
         '''
+
     query = ' '.join(query.split())
 
     count_query = query.replace('DISTINCT ?s', 'count(DISTINCT ?s) as ?count')
-    payload = {'default-graph-uri': DEFAULT_GRAPH_URI, 'format': 'json', 'query': count_query}
+    payload = {
+        'default-graph-uri': DEFAULT_GRAPH_URI,
+        'format': 'json',
+        'query': count_query
+        }
+
     response = requests.get(VIRTUOSO_URL, params=payload)
-    count = int(response.json().get('results').get('bindings')[0].get('count').get('value'))
-    print('Total number of records found: ' + str(count))
+
+    count = int(response.json().get('results').get('bindings')[0].get(
+        'count').get('value'))
+    print('Total number of records found: {}'.format(count))
 
     limit = 1000000
     offset = 0
     while offset < count:
         print('Retrieving batch with offset: ' + str(offset))
-        payload['query'] = query + ' LIMIT ' + str(limit) + ' OFFSET ' + str(offset)
+        payload['query'] = query + ' LIMIT ' + str(limit)
+        payload['query'] += ' OFFSET ' + str(offset)
         response = requests.get(VIRTUOSO_URL, params=payload)
         save_uris(response.json(), lang)
         offset += limit
+
 
 def save_uris(record, lang='nl'):
     '''
     Save uris to plain text file, one uri per line.
     '''
-    print('Saving batch of length: ' + str(len(record.get('results').get('bindings'))))
+    batch_len = len(record.get('results').get('bindings'))
+    print('Saving batch of length: {}'.format(batch_len))
 
     filename = 'uris_' + lang + '.txt'
     mode = 'ab' if os.path.exists(filename) else 'wb'
     with open(filename, mode) as fh:
         for triple in record.get('results').get('bindings'):
-            fh.write(triple.get('s').get('value').encode('utf-8') + '\n'.encode('utf-8'))
+            fh.write(triple.get('s').get('value').encode('utf-8') +
+                     '\n'.encode('utf-8'))
+
 
 if __name__ == "__main__":
     get_uris('nl')
     get_uris('en')
-

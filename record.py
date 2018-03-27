@@ -25,16 +25,14 @@ import pprint
 import re
 import sys
 import urllib
+import xml.etree.ElementTree as ET
 
 # Third-party library imports
 import requests
-import xml.etree.ElementTree as ET
-
-from unidecode import unidecode
 
 # Import DAC modules
-sys.path.insert(0, os.path.join(os.path.dirname(
-    os.path.realpath(__file__)), '.'))
+sys.path.insert(0, os.path.join(*[os.path.dirname(
+    os.path.realpath(__file__)), '..', 'dac', 'dac']))
 import utilities
 
 
@@ -66,7 +64,8 @@ PROP_TYPE = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'
 
 def get_prop(uri, prop, subject=True):
     '''
-    Retrieve all property values with specified uri as either subject or object.
+    Retrieve all property values with specified uri as either subject or
+    object.
     '''
     subj = '<' + uri + '>' if subject else '?x'
     obj = '?x' if subject else '<' + uri + '>'
@@ -77,8 +76,11 @@ def get_prop(uri, prop, subject=True):
     ''' % {'subj': subj, 'prop': prop, 'obj': obj}
     query = ' '.join(query.split())
 
-    payload = {'default-graph-uri': DEFAULT_GRAPH_URI, 'format': FORMAT,
-            'query': query}
+    payload = {
+        'default-graph-uri': DEFAULT_GRAPH_URI,
+        'format': FORMAT,
+        'query': query
+        }
     response = requests.get(VIRTUOSO_URL, params=payload)
     s = re.sub('&#([0-9]+);', '', response.text)
     root = ET.fromstring(s)
@@ -105,8 +107,11 @@ def get_record(uri):
     ''' % {'uri': uri}
     query = ' '.join(query.split())
 
-    payload = {'default-graph-uri': DEFAULT_GRAPH_URI, 'format': FORMAT,
-            'query': query}
+    payload = {
+        'default-graph-uri': DEFAULT_GRAPH_URI,
+        'format': FORMAT,
+        'query': query
+        }
     response = requests.get(VIRTUOSO_URL, params=payload)
     s = re.sub('&#([0-9]+);', '', response.text)
     root = ET.fromstring(s)
@@ -134,7 +139,7 @@ def get_record(uri):
 
     record = collapse(record, [PROP_ABSTRACT, PROP_COMMENT])
     record = collapse(record, [PROP_NAME, PROP_BIRTH_NAME, PROP_GIVEN_NAME,
-            PROP_LONG_NAME, PROP_ALIAS, PROP_NICK_NAME])
+                               PROP_LONG_NAME, PROP_ALIAS, PROP_NICK_NAME])
 
     return record
 
@@ -206,12 +211,12 @@ def get_wd_aliases(wd_uri):
     try:
         response = requests.get(url, timeout=10)
         data = response.json()
-    except:
+    except Exception as e:
         return []
     try:
         alias_dict = data.get('entities').get(wd_id).get('aliases').get('nl')
         return [a.get('value') for a in alias_dict]
-    except:
+    except Exception as e:
         return []
 
 
@@ -229,6 +234,8 @@ def ddd_jsru(preflabel):
     for item in jsru_data.iter():
         if item.tag.endswith('numberOfRecords'):
             return(item.text)
+
+    return None
 
 
 def transform(record, uri):
@@ -296,7 +303,7 @@ def transform(record, uri):
         if len([u for u in record[PROP_REDIRECT] if
                 u.startswith('http://dbpedia.org/resource/')]) > 100:
             cand += [uri_to_string(u) for u in record[PROP_REDIRECT] if
-                u.startswith('http://nl.dbpedia.org/resource/')]
+                     u.startswith('http://nl.dbpedia.org/resource/')]
         else:
             cand += [uri_to_string(u) for u in record[PROP_REDIRECT]]
 
@@ -304,7 +311,7 @@ def transform(record, uri):
     if PROP_DISAMBIGUATES in record:
         for u in record[PROP_DISAMBIGUATES]:
             s = uri_to_string(u)
-            if len(s) >= 2 and len(s) <=5 and s.isupper():
+            if len(s) >= 2 and len(s) <= 5 and s.isupper():
                 cand.append(s)
 
     # Include Wikidata aliases
@@ -330,7 +337,7 @@ def transform(record, uri):
                 s = uri_to_string(link).split('Categorie:')[1]
                 # Crude stop word filtering. Use list instead?
                 keywords += [k for k in utilities.normalize(s).split() if
-                    len(k) >= 5]
+                             len(k) >= 5]
         keywords = list(set(keywords))
         for k in pref_label.split():
             if k in keywords:
@@ -339,16 +346,20 @@ def transform(record, uri):
 
     # DBpedia ontology and schema.org types
     if PROP_TYPE in record:
-        document['dbo_type'] = list(set([t.split('/')[-1] for t in
-            record[PROP_TYPE] if t.startswith('http://dbpedia.org/ontology/')
-            and t.find('Wikidata:') < 0 and t.find('%') < 0]))
-        document['schema_type'] = list(set([t.split('/')[-1] for t in
-            record[PROP_TYPE] if t.startswith('http://schema.org/')]))
+        document['dbo_type'] = list(set(
+            [t.split('/')[-1] for t in record[PROP_TYPE] if
+             t.startswith('http://dbpedia.org/ontology/')
+             and t.find('Wikidata:') < 0 and t.find('%') < 0]))
+        document['schema_type'] = list(set(
+            [t.split('/')[-1] for t in record[PROP_TYPE] if
+             t.startswith('http://schema.org/')]))
 
     # Probable last name, for persons only
     if (('dbo_type' in document and 'Person' in document['dbo_type']) or
-        ('schema_type' in document and 'Person' in document['schema_type'])):
-        last_part = utilities.get_last_part(pref_label, exclude_first_part=True)
+            ('schema_type' in document and 'Person' in
+             document['schema_type'])):
+        last_part = utilities.get_last_part(pref_label,
+                                            exclude_first_part=True)
         if last_part:
             document['last_part'] = last_part
             document['last_part_str'] = last_part
@@ -361,7 +372,7 @@ def transform(record, uri):
         for date in record[PROP_BIRTH_DATE]:
             try:
                 cand.append(int(date[:4]))
-            except:
+            except Exception as e:
                 continue
         if cand:
             document['birth_year'] = min(cand)
@@ -371,7 +382,7 @@ def transform(record, uri):
         for date in record[PROP_DEATH_DATE]:
             try:
                 cand.append(int(date[:4]))
-            except:
+            except Exception as e:
                 continue
         if cand:
             document['death_year'] = max(cand)
@@ -382,19 +393,23 @@ def transform(record, uri):
 
     if PROP_BIRTH_PLACE in record:
         places = [utilities.normalize(uri_to_string(p)) for p in
-            record[PROP_BIRTH_PLACE] if p.startswith(nl_resource)]
+                  record[PROP_BIRTH_PLACE] if p.startswith(nl_resource)]
         if not places:
             places = [utilities.normalize(uri_to_string(p)) for p in
-                record[PROP_BIRTH_PLACE] if p.startswith(en_resource)]
+                      record[PROP_BIRTH_PLACE] if p.startswith(en_resource)]
         document['birth_place'] = list(set(places))
 
     if PROP_DEATH_PLACE in record:
         places = [utilities.normalize(uri_to_string(p)) for p in
-            record[PROP_DEATH_PLACE] if p.startswith(nl_resource)]
+                  record[PROP_DEATH_PLACE] if p.startswith(nl_resource)]
         if not places:
             places = [utilities.normalize(uri_to_string(p)) for p in
-                record[PROP_DEATH_PLACE] if p.startswith(en_resource)]
+                      record[PROP_DEATH_PLACE] if p.startswith(en_resource)]
         document['death_place'] = list(set(places))
+
+    # OCR tolerant labels
+
+    # Predicted topics and types
 
     return document
 
@@ -441,7 +456,7 @@ def get_document(uri=None):
         same_as_uris = []
         if PROP_SAME_AS in record:
             same_as_uris = [u for u in record.get(PROP_SAME_AS) if
-                u.startswith('http://dbpedia.org/resource/')]
+                            u.startswith('http://dbpedia.org/resource/')]
         if same_as_uris:
             for same_as_uri in same_as_uris:
                 records.append(get_record(same_as_uri))
@@ -458,4 +473,3 @@ if __name__ == '__main__':
     else:
         result = get_document('http://nl.dbpedia.org/resource/Albert_Einstein')
     pprint.pprint(result)
-
