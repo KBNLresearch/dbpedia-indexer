@@ -20,9 +20,9 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 # Standard library imports
+import argparse
 import json
 import logging
-import os
 import sys
 import time
 
@@ -31,6 +31,7 @@ import requests
 
 # DBpedia Indexer imports
 import record
+import update
 
 
 SOLR_UPDATE_URL = 'http://linksolr1.kbresearch.nl/dbpedia/update'
@@ -50,16 +51,18 @@ logger.addHandler(handler)
 
 
 def commit():
-    resp = requests.get(SOLR_UPDATE_URL + '?commit=true')
+    '''
+    Commit changes to Solr index.
+    '''
     logger.info('Committing changes...')
-    logger.info(resp.text)
+    resp = requests.get(SOLR_UPDATE_URL + '?commit=true')
 
 
-def index_list(f, start=0, stop=None):
+def index_list(in_file, action='full', start=0, stop=0):
     '''
     Retrieve document for each URI on the list and send it to Solr.
     '''
-    with open(f, 'rb') as fh:
+    with open(in_file, 'rb') as fh:
         for i, uri in enumerate(fh):
 
             # Start from a specific line number
@@ -68,7 +71,8 @@ def index_list(f, start=0, stop=None):
             else:
                 # Report every 10 requests
                 if i % 10 == 0:
-                    logger.info('Processing file {}, record {}'.format(f, i))
+                    logger.info('Processing file {}, record {}'.format(in_file,
+                                                                       i))
 
                 # Commit every 100 requests
                 if i % 100 == 0:
@@ -83,8 +87,13 @@ def index_list(f, start=0, stop=None):
                 payload = None
                 while not payload and retries < 5:
                     try:
-                        resp = record.get_document(uri)
-                        payload = json.dumps(resp, ensure_ascii=False)
+                        if action == 'full':
+                            doc = record.get_document(uri)
+                        elif action == 'ocr':
+                            doc = update.get_document(uri)
+                        elif action == 'topics':
+                            pass
+                        payload = json.dumps(doc, ensure_ascii=False)
                         payload = payload.encode('utf-8')
                     except Exception as e:
                         time.sleep(1)
@@ -96,7 +105,7 @@ def index_list(f, start=0, stop=None):
                     logger.error(msg)
                     continue
 
-                # Send the record data to Solr
+                # Send the data to Solr
                 try:
                     headers = {'Content-Type': 'application/json'}
                     resp = requests.post(SOLR_JSON_URL, data=payload,
@@ -115,8 +124,18 @@ def index_list(f, start=0, stop=None):
 
 
 if __name__ == '__main__':
-    fname = 'uris_nl.txt' if len(sys.argv) < 2 else sys.argv[1]
-    start = 0 if len(sys.argv) < 3 else int(sys.argv[2])
-    stop = None if len(sys.argv) < 4 else int(sys.argv[3])
+    parser = argparse.ArgumentParser()
 
-    index_list(fname, start, stop)
+    parser.add_argument('--input', required=False, type=str,
+                        default='uris_nl.txt', help='path to input file')
+    parser.add_argument('--action', required=False, type=str,
+                        default='full', help='type of indexer action')
+    parser.add_argument('--start', required=False, type=int,
+                        default=0, help='start position in input file')
+    parser.add_argument('--stop', required=False, type=int,
+                        default=0, help='stop position in input file')
+
+    args = parser.parse_args()
+
+    index_list(vars(args)['input'], vars(args)['action'],
+               vars(args)['start'], vars(args)['stop'])
