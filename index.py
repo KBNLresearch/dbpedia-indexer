@@ -42,7 +42,7 @@ logging.getLogger('requests').setLevel(logging.WARNING)
 
 formatter = logging.Formatter('%(asctime)s:%(levelname)s:%(message)s')
 
-handler = logging.FileHandler('index.log', mode='w')
+handler = logging.FileHandler('index.log', mode='a')
 handler.setFormatter(formatter)
 handler.setLevel(logging.ERROR)
 
