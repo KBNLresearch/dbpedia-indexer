@@ -35,9 +35,9 @@ sys.path.insert(0, os.path.join(*[os.path.dirname(
     os.path.realpath(__file__)), '..', 'dac', 'dac']))
 import utilities
 
-
 VIRTUOSO_URL = 'http://openvirtuoso.kbresearch.nl/sparql?'
 WD_URL = 'https://www.wikidata.org/wiki/Special:EntityData/{}.json'
+TOPICS_URL = 'http://kbresearch.nl/topics/?'
 
 DEFAULT_GRAPH_URI = 'http://nl.dbpedia.org'
 FORMAT = 'xml'
@@ -408,8 +408,34 @@ def transform(record, uri):
         document['death_place'] = list(set(places))
 
     # OCR tolerant labels
+    if 'pref_label' in document:
+        pref_label_ocr = utilities.normalize_ocr(document['pref_label'])
+        document['pref_label_ocr'] = pref_label_ocr
+        document['pref_label_str_ocr'] = pref_label_ocr
+
+    if 'alt_label' in document:
+        alt_label_ocr = [utilities.normalize_ocr(label) for label in
+                         document['alt_label']]
+        document['alt_label_ocr'] = alt_label_ocr
+        document['alt_label_str_ocr'] = alt_label_ocr
+
+    if 'last_part' in document:
+        last_part_ocr = utilities.normalize_ocr(document['last_part'])
+        document['last_part_ocr'] = last_part_ocr
+        document['last_part_str_ocr'] = last_part_ocr
 
     # Predicted topics and types
+    resp = requests.get(TOPICS_URL, params={'url': uri}, timeout=300)
+    if resp.status_code != 200:
+        raise Exception('Error retrieving topics')
+
+    resp = resp.json()
+
+    for t in resp['topics']:
+        document['topic_{}'.format(t)] = resp['topics'][t]
+
+    for t in resp['types']:
+        document['dbo_type_{}'.format(t)] = resp['types'][t]
 
     return document
 
