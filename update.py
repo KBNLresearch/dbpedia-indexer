@@ -32,19 +32,23 @@ sys.path.insert(0, os.path.join(*[os.path.dirname(
     os.path.realpath(__file__)), '..', 'dac', 'dac']))
 import utilities
 
-
 SOLR_URL = 'http://linksolr1.kbresearch.nl/dbpedia/query?'
+TOPICS_URL = 'http://kbresearch.nl/topics/?'
 
 
-def get_document(uri):
-
+def get_current(uri):
     payload = {}
     payload['q'] = 'id:"{}"'.format(uri)
     payload['wt'] = 'json'
 
     resp = requests.get(SOLR_URL, params=payload, timeout=60).json()
 
-    doc = resp['response']['docs'][0]
+    return resp['response']['docs'][0]
+
+
+def get_document_ocr(uri):
+
+    doc = get_current(uri)
 
     if 'pref_label' in doc:
         pref_label_ocr = utilities.normalize_ocr(doc['pref_label'])
@@ -62,11 +66,30 @@ def get_document(uri):
     return doc
 
 
+def get_document_topics(uri):
+
+    doc = get_current(uri)
+
+    resp = requests.get(TOPICS_URL, params={'url': uri}, timeout=300)
+    if resp.status_code != 200:
+        raise Exception('Error retrieving topics')
+
+    resp = resp.json()
+
+    for t in resp['topics']:
+        doc['topic_{}'.format(t)] = resp['topics'][t]
+
+    for t in resp['types']:
+        doc['dbo_type_{}'.format(t)] = resp['types'][t]
+
+    return doc
+
+
 if __name__ == '__main__':
     if len(sys.argv) > 1:
         uri = sys.argv[1]
     else:
         uri = 'http://nl.dbpedia.org/resource/Albert_Einstein'
 
-    doc = get_document(uri)
+    doc = get_document_topics(uri)
     pprint.pprint(doc)

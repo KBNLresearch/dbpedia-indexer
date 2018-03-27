@@ -90,11 +90,13 @@ def index_list(in_file, action='full', start=0, stop=0):
                         if action == 'full':
                             doc = record.get_document(uri)
                         elif action == 'ocr':
-                            doc = update.get_document(uri)
+                            doc = update.get_document_ocr(uri)
                         elif action == 'topics':
-                            pass
+                            doc = update.get_document_topics(uri)
+
                         payload = json.dumps(doc, ensure_ascii=False)
                         payload = payload.encode('utf-8')
+
                     except Exception as e:
                         time.sleep(1)
                         retries += 1
