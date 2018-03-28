@@ -77,10 +77,12 @@ def get_document_topics(uri):
     resp = resp.json()
 
     for t in resp['topics']:
-        doc['topic_{}'.format(t)] = resp['topics'][t]
+        doc['topic_{}'.format(t)] = float('{0:.3f}'.format(
+            resp['topics'][t]))
 
     for t in resp['types']:
-        doc['dbo_type_{}'.format(t)] = resp['types'][t]
+        doc['dbo_type_{}'.format(t)] = float('{0:.3f}'.format(
+            resp['types'][t]))
 
     return doc
 
