@@ -87,6 +87,26 @@ def get_document_topics(uri):
     return doc
 
 
+def get_document_last_part(uri):
+
+    doc = get_current(uri)
+
+    if doc['dbo_type_person'] >= 0.75 and 'last_part' not in doc:
+        last_part = utilities.get_last_part(doc['pref_label'],
+                                            exclude_first_part=True)
+        if last_part:
+            doc['last_part'] = last_part
+            doc['last_part_str'] = last_part
+
+            last_part_ocr = utilities.normalize_ocr(doc['last_part'])
+            doc['last_part_ocr'] = last_part_ocr
+            doc['last_part_str_ocr'] = last_part_ocr
+
+        return doc
+
+    return None
+
+
 if __name__ == '__main__':
     if len(sys.argv) > 1:
         uri = sys.argv[1]

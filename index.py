@@ -85,6 +85,8 @@ def index_list(in_file, action='full', start=0, stop=0):
                 # Get data to be indexed
                 retries = 0
                 payload = None
+                skip = False
+
                 while not payload and retries < 5:
                     try:
                         if action == 'full':
@@ -93,6 +95,11 @@ def index_list(in_file, action='full', start=0, stop=0):
                             doc = update.get_document_ocr(uri)
                         elif action == 'topics':
                             doc = update.get_document_topics(uri)
+                        elif action == 'last_part':
+                            doc = update.get_document_last_part(uri)
+                            if not doc:
+                                skip = True
+                                break
 
                         payload = json.dumps(doc, ensure_ascii=False)
                         payload = payload.encode('utf-8')
@@ -102,12 +109,18 @@ def index_list(in_file, action='full', start=0, stop=0):
                         retries += 1
                         continue
 
+                if skip:
+                    # logger.info('Skipping URI: {}'.format(uri))
+                    continue
+
                 if not payload:
                     msg = 'VOS error for URI: {}'.format(uri)
                     logger.error(msg)
                     continue
 
                 # Send the data to Solr
+                logger.info('Indexing URI: {}'.format(uri))
+
                 try:
                     headers = {'Content-Type': 'application/json'}
                     resp = requests.post(SOLR_JSON_URL, data=payload,

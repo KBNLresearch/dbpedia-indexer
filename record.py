@@ -354,10 +354,23 @@ def transform(record, uri):
             [t.split('/')[-1] for t in record[PROP_TYPE] if
              t.startswith('http://schema.org/')]))
 
+    # Predicted topics and types
+    resp = requests.get(TOPICS_URL, params={'url': uri}, timeout=300)
+    if resp.status_code != 200:
+        raise Exception('Error retrieving topics')
+
+    resp = resp.json()
+
+    for t in resp['topics']:
+        document['topic_{}'.format(t)] = resp['topics'][t]
+
+    for t in resp['types']:
+        document['dbo_type_{}'.format(t)] = resp['types'][t]
+
     # Probable last name, for persons only
     if (('dbo_type' in document and 'Person' in document['dbo_type']) or
             ('schema_type' in document and 'Person' in
-             document['schema_type'])):
+             document['schema_type']) or document['dbo_type_person'] >= 0.75):
         last_part = utilities.get_last_part(pref_label,
                                             exclude_first_part=True)
         if last_part:
@@ -423,19 +436,6 @@ def transform(record, uri):
         last_part_ocr = utilities.normalize_ocr(document['last_part'])
         document['last_part_ocr'] = last_part_ocr
         document['last_part_str_ocr'] = last_part_ocr
-
-    # Predicted topics and types
-    resp = requests.get(TOPICS_URL, params={'url': uri}, timeout=300)
-    if resp.status_code != 200:
-        raise Exception('Error retrieving topics')
-
-    resp = resp.json()
-
-    for t in resp['topics']:
-        document['topic_{}'.format(t)] = resp['topics'][t]
-
-    for t in resp['types']:
-        document['dbo_type_{}'.format(t)] = resp['types'][t]
 
     return document
 
