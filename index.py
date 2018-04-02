@@ -100,6 +100,8 @@ def index_list(in_file, action='full', start=0, stop=0):
                             if not doc:
                                 skip = True
                                 break
+                        elif action == 'abstract':
+                            doc = update.get_document_abstract(uri)
 
                         payload = json.dumps(doc, ensure_ascii=False)
                         payload = payload.encode('utf-8')

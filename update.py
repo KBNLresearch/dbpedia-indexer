@@ -107,11 +107,21 @@ def get_document_last_part(uri):
     return None
 
 
+def get_document_abstract(uri):
+
+    doc = get_current(uri)
+
+    if 'abstract' not in doc:
+        doc['abstract'] = '.'
+
+    return doc
+
+
 if __name__ == '__main__':
     if len(sys.argv) > 1:
         uri = sys.argv[1]
     else:
         uri = 'http://nl.dbpedia.org/resource/Albert_Einstein'
 
-    doc = get_document_topics(uri)
+    doc = get_document_abstract(uri)
     pprint.pprint(doc)

@@ -271,7 +271,10 @@ def transform(record, uri):
     document['pref_label_str'] = pref_label
 
     # The first (i.e. Dutch if available) abstract
-    document['abstract'] = record[PROP_ABSTRACT][0]
+    try:
+        document['abstract'] = record[PROP_ABSTRACT][0]
+    except Exception as e:
+        document['abstract'] = '.'
 
     # Language of the (primary) resource description
     document['lang'] = 'nl' if uri.startswith('http://nl.') else 'en'
