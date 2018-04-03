@@ -372,8 +372,7 @@ def transform(record, uri):
 
     # Probable last name, for persons only
     if (('dbo_type' in document and 'Person' in document['dbo_type']) or
-            ('schema_type' in document and 'Person' in
-             document['schema_type']) or document['dbo_type_person'] >= 0.75):
+        ('dbo_type' not in document and document['dbo_type_person'] >= 0.75)):
         last_part = utilities.get_last_part(pref_label,
                                             exclude_first_part=True)
         if last_part:

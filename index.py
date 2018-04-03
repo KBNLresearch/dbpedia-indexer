@@ -100,6 +100,11 @@ def index_list(in_file, action='full', start=0, stop=0):
                             if not doc:
                                 skip = True
                                 break
+                        elif action == 'remove_last_part':
+                            doc = update.get_document_remove_last_part(uri)
+                            if not doc:
+                                skip = True
+                                break
                         elif action == 'abstract':
                             doc = update.get_document_abstract(uri)
 

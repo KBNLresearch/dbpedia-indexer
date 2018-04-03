@@ -91,7 +91,8 @@ def get_document_last_part(uri):
 
     doc = get_current(uri)
 
-    if doc['dbo_type_person'] >= 0.75 and 'last_part' not in doc:
+    if ('dbo_type' not in doc and doc['dbo_type_person'] >= 0.75 and
+        'last_part' not in doc):
         last_part = utilities.get_last_part(doc['pref_label'],
                                             exclude_first_part=True)
         if last_part:
@@ -101,6 +102,23 @@ def get_document_last_part(uri):
             last_part_ocr = utilities.normalize_ocr(doc['last_part'])
             doc['last_part_ocr'] = last_part_ocr
             doc['last_part_str_ocr'] = last_part_ocr
+
+            return doc
+
+    return None
+
+
+def get_document_remove_last_part(uri):
+
+    doc = get_current(uri)
+
+    if ('last_part' in doc and 'dbo_type' in doc and 'Person' not in
+        doc['dbo_type']):
+
+        del doc['last_part']
+        del doc['last_part_str']
+        del doc['last_part_ocr']
+        del doc['last_part_str_ocr']
 
         return doc
 
@@ -123,5 +141,6 @@ if __name__ == '__main__':
     else:
         uri = 'http://nl.dbpedia.org/resource/Albert_Einstein'
 
-    doc = get_document_abstract(uri)
+    doc = get_document_remove_last_part(uri)
     pprint.pprint(doc)
+
