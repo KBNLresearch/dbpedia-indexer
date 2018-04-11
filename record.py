@@ -276,6 +276,10 @@ def transform(record, uri):
     except Exception as e:
         document['abstract'] = '.'
 
+    bow = utilities.tokenize(doc['abstract'], max_sent=5)
+    doc['abstract_norm'] = ' '.join(bow)
+    doc['abstract_token'] = [t for t in bow if len(t) > 5][:15]
+
     # Language of the (primary) resource description
     document['lang'] = 'nl' if uri.startswith('http://nl.') else 'en'
 

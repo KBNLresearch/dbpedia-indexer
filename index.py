@@ -107,6 +107,8 @@ def index_list(in_file, action='full', start=0, stop=0):
                                 break
                         elif action == 'abstract':
                             doc = update.get_document_abstract(uri)
+                        elif action == 'abstract_norm':
+                            doc = update.get_document_abstract_norm(uri)
 
                         payload = json.dumps(doc, ensure_ascii=False)
                         payload = payload.encode('utf-8')
@@ -126,7 +128,7 @@ def index_list(in_file, action='full', start=0, stop=0):
                     continue
 
                 # Send the data to Solr
-                logger.info('Indexing URI: {}'.format(uri))
+                # logger.info('Indexing URI: {}'.format(uri))
 
                 try:
                     headers = {'Content-Type': 'application/json'}

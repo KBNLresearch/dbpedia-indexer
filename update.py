@@ -135,12 +135,23 @@ def get_document_abstract(uri):
     return doc
 
 
+def get_document_abstract_norm(uri):
+
+    doc = get_current(uri)
+
+    bow = utilities.tokenize(doc['abstract'], max_sent=5)
+
+    doc['abstract_norm'] = ' '.join(bow)
+    doc['abstract_token'] = [t for t in bow if len(t) > 5][:15]
+
+    return doc
+
+
 if __name__ == '__main__':
     if len(sys.argv) > 1:
         uri = sys.argv[1]
     else:
         uri = 'http://nl.dbpedia.org/resource/Albert_Einstein'
 
-    doc = get_document_remove_last_part(uri)
+    doc = get_document_abstract_norm(uri)
     pprint.pprint(doc)
-
