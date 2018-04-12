@@ -95,7 +95,7 @@ def get_document_last_part(uri):
     doc = get_current(uri)
 
     if ('dbo_type' not in doc and doc['dbo_type_person'] >= 0.75 and
-        'last_part' not in doc):
+            'last_part' not in doc):
         last_part = utilities.get_last_part(doc['pref_label'],
                                             exclude_first_part=True)
         if last_part:
@@ -116,7 +116,7 @@ def get_document_remove_last_part(uri):
     doc = get_current(uri)
 
     if ('last_part' in doc and 'dbo_type' in doc and 'Person' not in
-        doc['dbo_type']):
+            doc['dbo_type']):
 
         del doc['last_part']
         del doc['last_part_str']
@@ -161,19 +161,28 @@ def get_document_vectors(uri):
         response = requests.get(W2V_URL, params=payload, timeout=300)
         data = response.json()
         if data['vectors']:
-            data = data['vectors'][0]
-            data = [float('{0:.3f}'.format(f)) for f in data]
+            data = [float('{0:.3f}'.format(f)) for f in data['vectors'][0]]
             doc['vector'] = json.dumps(data)
 
-    # Abstract tokens
+    # Abstract and keyword tokens
+    tokens = []
     if 'abstract_token' in doc:
-        payload = {'source': ' '.join(doc['abstract_token'])}
+        tokens.extend(doc['abstract_token'])
+    if 'keyword' in doc:
+        tokens.extend(doc['keyword'])
+
+    if tokens:
+        payload = {'source': ' '.join(list(set(tokens)))}
         response = requests.get(W2V_URL, params=payload, timeout=300)
-        data = response.json()
-        data = data['vectors']
+        data = response.json()['vectors']
         if data:
-            vector = [json.dumps([float('{0:.3f}'.format(f)) for f in v]) for v in data]
-            doc['abstract_vector'] = vector
+            doc['abstract_vector'] = [json.dumps([float('{0:.3f}'.format(f))
+                                                  for f in v]) for v in data]
+
+    if 'vector_bin' in doc:
+        del doc['vector_bin']
+    if 'abstract_vector_bin' in doc:
+        del doc['abstract_vector_bin']
 
     return doc
 
@@ -189,21 +198,25 @@ def get_document_vectors_bin(uri):
         response = requests.get(W2V_URL, params=payload, timeout=300)
         data = response.json()
         if data['vectors']:
-            data = data['vectors'][0]
-            data = [float('{0:.3f}'.format(f)) for f in data]
-            doc['vector_bin'] = base64.urlsafe_b64encode(bytes(json.dumps(data),
-                'utf-8')).decode('ascii')
+            data = [float('{0:.3f}'.format(f)) for f in data['vectors'][0]]
+            doc['vector_bin'] = base64.urlsafe_b64encode(bytes(
+                json.dumps(data), 'utf-8')).decode('ascii')
 
-    # Abstract tokens
+    # Abstract and keyword tokens
+    tokens = []
     if 'abstract_token' in doc:
-        payload = {'source': ' '.join(doc['abstract_token'])}
+        tokens.extend(doc['abstract_token'])
+    if 'keyword' in doc:
+        tokens.extend(doc['keyword'])
+
+    if tokens:
+        payload = {'source': ' '.join(list(set(tokens)))}
         response = requests.get(W2V_URL, params=payload, timeout=300)
-        data = response.json()
-        data = data['vectors']
+        data = response.json()['vectors']
         if data:
             vector = [[float('{0:.3f}'.format(f)) for f in v] for v in data]
-            doc['abstract_vector_bin'] = base64.urlsafe_b64encode(bytes(json.dumps(vector),
-                'utf-8')).decode('ascii')
+            doc['abstract_vector_bin'] = base64.urlsafe_b64encode(bytes(
+                json.dumps(vector), 'utf-8')).decode('ascii')
 
     return doc
 
@@ -216,4 +229,3 @@ if __name__ == '__main__':
 
     doc = get_document_vectors_bin(uri)
     pprint.pprint(doc)
-

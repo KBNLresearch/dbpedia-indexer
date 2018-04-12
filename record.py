@@ -20,6 +20,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 # Standard library imports
+import json
 import os
 import pprint
 import re
@@ -38,6 +39,7 @@ import utilities
 VIRTUOSO_URL = 'http://openvirtuoso.kbresearch.nl/sparql?'
 WD_URL = 'https://www.wikidata.org/wiki/Special:EntityData/{}.json'
 TOPICS_URL = 'http://kbresearch.nl/topics/?'
+W2V_URL = 'http://kbresearch.nl/word2vec/vectors?'
 
 DEFAULT_GRAPH_URI = 'http://nl.dbpedia.org'
 FORMAT = 'xml'
@@ -376,7 +378,8 @@ def transform(record, uri):
 
     # Probable last name, for persons only
     if (('dbo_type' in document and 'Person' in document['dbo_type']) or
-        ('dbo_type' not in document and document['dbo_type_person'] >= 0.75)):
+            ('dbo_type' not in document and document['dbo_type_person']
+             >= 0.75)):
         last_part = utilities.get_last_part(pref_label,
                                             exclude_first_part=True)
         if last_part:
@@ -442,6 +445,31 @@ def transform(record, uri):
         last_part_ocr = utilities.normalize_ocr(document['last_part'])
         document['last_part_ocr'] = last_part_ocr
         document['last_part_str_ocr'] = last_part_ocr
+
+    # Vectors
+    # Wikidata
+    if 'uri_wd' in document:
+        payload = {'source': document['uri_wd'].split('/')[-1]}
+        response = requests.get(W2V_URL, params=payload, timeout=300)
+        data = response.json()
+        if data['vectors']:
+            data = [float('{0:.3f}'.format(f)) for f in data['vectors'][0]]
+            document['vector'] = json.dumps(data)
+
+    # Abstract and keyword tokens
+    tokens = []
+    if 'abstract_token' in document:
+        tokens.extend(document['abstract_token'])
+    if 'keyword' in document:
+        tokens.extend(document['keyword'])
+
+    if tokens:
+        payload = {'source': ' '.join(list(set(tokens)))}
+        response = requests.get(W2V_URL, params=payload, timeout=300)
+        data = response.json()['vectors']
+        if data:
+            document['abstract_vector'] = [json.dumps([float(
+                '{0:.3f}'.format(f)) for f in v]) for v in data]
 
     return document
 
