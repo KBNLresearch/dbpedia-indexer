@@ -34,6 +34,7 @@ import requests
 # Import DAC modules
 sys.path.insert(0, os.path.join(*[os.path.dirname(
     os.path.realpath(__file__)), '..', 'dac', 'dac']))
+import dictionary
 import utilities
 
 VIRTUOSO_URL = 'http://openvirtuoso.kbresearch.nl/sparql?'
@@ -464,6 +465,12 @@ def transform(record, uri):
         tokens.extend(document['keyword'])
 
     if tokens:
+        if 'pref_label' in document:
+            tokens = [t for t in tokens if t not in
+                      document['pref_label'].split()]
+        tokens = [t for t in tokens if t not in dictionary.unwanted and
+                  len(t) >= 5]
+
         payload = {'source': ' '.join(list(set(tokens)))}
         response = requests.get(W2V_URL, params=payload, timeout=300)
         data = response.json()['vectors']

@@ -32,6 +32,7 @@ import requests
 # Import DAC modules
 sys.path.insert(0, os.path.join(*[os.path.dirname(
     os.path.realpath(__file__)), '..', 'dac', 'dac']))
+import dictionary
 import utilities
 
 SOLR_URL = 'http://linksolr1.kbresearch.nl/dbpedia/query?'
@@ -172,6 +173,11 @@ def get_document_vectors(uri):
         tokens.extend(doc['keyword'])
 
     if tokens:
+        if 'pref_label' in doc:
+            tokens = [t for t in tokens if t not in doc['pref_label'].split()]
+        tokens = [t for t in tokens if t not in dictionary.unwanted and
+                  len(t) >= 5]
+
         payload = {'source': ' '.join(list(set(tokens)))}
         response = requests.get(W2V_URL, params=payload, timeout=300)
         data = response.json()['vectors']
@@ -210,6 +216,11 @@ def get_document_vectors_bin(uri):
         tokens.extend(doc['keyword'])
 
     if tokens:
+        if 'pref_label' in doc:
+            tokens = [t for t in tokens if t not in doc['pref_label'].split()]
+        tokens = [t for t in tokens if t not in dictionary.unwanted and
+                  len(t) >= 5]
+
         payload = {'source': ' '.join(list(set(tokens)))}
         response = requests.get(W2V_URL, params=payload, timeout=300)
         data = response.json()['vectors']
