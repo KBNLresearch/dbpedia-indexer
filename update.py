@@ -20,6 +20,8 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 # Standard library imports
+import base64
+import json
 import os
 import pprint
 import sys
@@ -34,6 +36,7 @@ import utilities
 
 SOLR_URL = 'http://linksolr1.kbresearch.nl/dbpedia/query?'
 TOPICS_URL = 'http://kbresearch.nl/topics/?'
+W2V_URL = 'http://kbresearch.nl/word2vec/vectors?'
 
 
 def get_current(uri):
@@ -142,7 +145,65 @@ def get_document_abstract_norm(uri):
     bow = utilities.tokenize(doc['abstract'], max_sent=5)
 
     doc['abstract_norm'] = ' '.join(bow)
-    doc['abstract_token'] = [t for t in bow if len(t) > 5][:15]
+    doc['abstract_token'] = list(set([t for t in bow if len(t) > 5]))[:15]
+
+    return doc
+
+
+def get_document_vectors(uri):
+
+    doc = get_current(uri)
+    del doc['_version_']
+
+    # Wikidata
+    if 'uri_wd' in doc:
+        payload = {'source': doc['uri_wd'].split('/')[-1]}
+        response = requests.get(W2V_URL, params=payload, timeout=300)
+        data = response.json()
+        if data['vectors']:
+            data = data['vectors'][0]
+            data = [float('{0:.3f}'.format(f)) for f in data]
+            doc['vector'] = json.dumps(data)
+
+    # Abstract tokens
+    if 'abstract_token' in doc:
+        payload = {'source': ' '.join(doc['abstract_token'])}
+        response = requests.get(W2V_URL, params=payload, timeout=300)
+        data = response.json()
+        data = data['vectors']
+        if data:
+            vector = [json.dumps([float('{0:.3f}'.format(f)) for f in v]) for v in data]
+            doc['abstract_vector'] = vector
+
+    return doc
+
+
+def get_document_vectors_bin(uri):
+
+    doc = get_current(uri)
+    del doc['_version_']
+
+    # Wikidata
+    if 'uri_wd' in doc:
+        payload = {'source': doc['uri_wd'].split('/')[-1]}
+        response = requests.get(W2V_URL, params=payload, timeout=300)
+        data = response.json()
+        if data['vectors']:
+            data = data['vectors'][0]
+            data = [float('{0:.3f}'.format(f)) for f in data]
+            doc['vector_bin'] = base64.urlsafe_b64encode(bytes(json.dumps(data),
+                'utf-8')).decode('ascii')
+
+    # Abstract tokens
+    if 'abstract_token' in doc:
+        payload = {'source': ' '.join(doc['abstract_token'])}
+        response = requests.get(W2V_URL, params=payload, timeout=300)
+        data = response.json()
+        data = data['vectors']
+        if data:
+            vector = [[float('{0:.3f}'.format(f)) for f in v] for v in data]
+            doc['abstract_vector_bin'] = base64.urlsafe_b64encode(bytes(json.dumps(vector),
+                'utf-8')).decode('ascii')
 
     return doc
 
@@ -153,5 +214,6 @@ if __name__ == '__main__':
     else:
         uri = 'http://nl.dbpedia.org/resource/Albert_Einstein'
 
-    doc = get_document_abstract_norm(uri)
+    doc = get_document_vectors_bin(uri)
     pprint.pprint(doc)
+
