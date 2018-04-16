@@ -231,12 +231,22 @@ def get_document_vectors_bin(uri):
     return doc
 
 
+def get_document_remove_vectors_bin(uri):
+    doc = get_current(uri)
+
+    if 'vector_bin' in doc:
+        del doc['vector_bin']
+    if 'abstract_vector_bin' in doc:
+        del doc['abstract_vector_bin']
+    return doc
+
+
 if __name__ == '__main__':
     if len(sys.argv) > 1:
         uri = sys.argv[1]
     else:
         uri = 'http://nl.dbpedia.org/resource/Albert_Einstein'
 
-    doc = get_document_vectors_bin(uri)
+    doc = get_document_remove_vectors_bin(uri)
     pprint.pprint(doc)
 
