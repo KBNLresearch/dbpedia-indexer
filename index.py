@@ -138,7 +138,6 @@ def index_list(in_file, action='full', start=0, stop=0):
                     headers = {'Content-Type': 'application/json'}
                     resp = requests.post(SOLR_JSON_URL, data=payload,
                                          headers=headers, timeout=60).json()
-
                     status = resp['responseHeader']['status']
                     if status != 0:
                         raise Exception()

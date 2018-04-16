@@ -24,6 +24,7 @@ import base64
 import json
 import os
 import pprint
+import struct
 import sys
 
 # Third-party library imports
@@ -185,11 +186,6 @@ def get_document_vectors(uri):
             doc['abstract_vector'] = [json.dumps([float('{0:.3f}'.format(f))
                                                   for f in v]) for v in data]
 
-    if 'vector_bin' in doc:
-        del doc['vector_bin']
-    if 'abstract_vector_bin' in doc:
-        del doc['abstract_vector_bin']
-
     return doc
 
 
@@ -203,10 +199,11 @@ def get_document_vectors_bin(uri):
         payload = {'source': doc['uri_wd'].split('/')[-1]}
         response = requests.get(W2V_URL, params=payload, timeout=300)
         data = response.json()
+
         if data['vectors']:
-            data = [float('{0:.3f}'.format(f)) for f in data['vectors'][0]]
-            doc['vector_bin'] = base64.urlsafe_b64encode(bytes(
-                json.dumps(data), 'utf-8')).decode('ascii')
+            listFloatIn = data['vectors'][0]
+            bufIn = struct.pack('!%sd' % len(listFloatIn), *listFloatIn)
+            doc['vector_bin'] = base64.b64encode(bufIn).decode('ascii')
 
     # Abstract and keyword tokens
     tokens = []
@@ -223,11 +220,13 @@ def get_document_vectors_bin(uri):
 
         payload = {'source': ' '.join(list(set(tokens)))}
         response = requests.get(W2V_URL, params=payload, timeout=300)
-        data = response.json()['vectors']
-        if data:
-            vector = [[float('{0:.3f}'.format(f)) for f in v] for v in data]
-            doc['abstract_vector_bin'] = base64.urlsafe_b64encode(bytes(
-                json.dumps(vector), 'utf-8')).decode('ascii')
+        data = response.json()
+
+        if data['vectors']:
+            doc['abstract_vector_bin'] = []
+            for v in data['vectors']:
+                bufIn = struct.pack('!%sd' % len(v), *v)
+                doc['abstract_vector_bin'].append(base64.b64encode(bufIn).decode('ascii'))
 
     return doc
 
@@ -240,3 +239,4 @@ if __name__ == '__main__':
 
     doc = get_document_vectors_bin(uri)
     pprint.pprint(doc)
+
