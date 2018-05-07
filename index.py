@@ -115,7 +115,8 @@ def index_list(in_file, action='full', start=0, stop=0):
                             doc = update.get_document_vectors_bin(uri)
                         elif action == 'remove_vectors_bin':
                             doc = update.get_document_remove_vectors_bin(uri)
-
+                        elif action == 'consonants':
+                            doc = update.get_document_normalize_consonants(uri)
                         payload = json.dumps(doc, ensure_ascii=False)
                         payload = payload.encode('utf-8')
 

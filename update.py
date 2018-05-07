@@ -241,12 +241,50 @@ def get_document_remove_vectors_bin(uri):
     return doc
 
 
+def normalize_consonants(s):
+    if len(s) >= 2 and s[-1] == s[-2]:
+        return s[:-1]
+    return s
+
+
+def get_document_normalize_consonants(uri):
+    doc = get_current(uri)
+
+    if 'pref_label' in doc:
+        doc['pref_label'] = doc['pref_label_str'] = normalize_consonants(
+                doc['pref_label'])
+    if 'alt_label' in doc:
+        doc['alt_label'] = doc['alt_label_str'] = [normalize_consonants(s) for
+                s in doc['alt_label']]
+    if 'wd_alt_label' in doc:
+        doc['wd_alt_label'] = doc['wd_alt_label_str'] = [normalize_consonants(s) for
+                s in doc['wd_alt_label']]
+    if 'last_part' in doc:
+        doc['last_part'] = doc['last_part_str'] = normalize_consonants(
+                doc['last_part'])
+
+    if 'pref_label' in doc:
+        pref_label_ocr = utilities.normalize_ocr(doc['pref_label'])
+        doc['pref_label_ocr'] = doc['pref_label_str_ocr'] = pref_label_ocr
+
+    if 'alt_label' in doc:
+        alt_label_ocr = [utilities.normalize_ocr(label) for label in
+                         doc['alt_label']]
+        doc['alt_label_ocr'] = doc['alt_label_str_ocr'] = alt_label_ocr
+
+    if 'last_part' in doc:
+        last_part_ocr = utilities.normalize_ocr(doc['last_part'])
+        doc['last_part_ocr'] = doc['last_part_str_ocr'] = last_part_ocr
+
+    return doc
+
+
 if __name__ == '__main__':
     if len(sys.argv) > 1:
         uri = sys.argv[1]
     else:
         uri = 'http://nl.dbpedia.org/resource/Albert_Einstein'
 
-    doc = get_document_remove_vectors_bin(uri)
+    doc = get_document_normalize_consonants(uri)
     pprint.pprint(doc)
 
